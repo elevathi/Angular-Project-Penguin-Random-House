@@ -1,13 +1,12 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '../../models/title.model';
-import { HighlightDirective } from '../../directives/highlight.directive';
 import { PrhApiService } from '../../services/prh-api.service';
 
 @Component({
   selector: 'app-title-card',
   standalone: true,
-  imports: [CommonModule, HighlightDirective],
+  imports: [CommonModule],
   template: './title-card.html',
  })
 export class TitleCardComponent {
