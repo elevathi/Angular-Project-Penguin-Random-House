@@ -32,16 +32,25 @@ export class SearchComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
-  searchType: 'authors' | 'titles' = 'authors';
+  searchType: 'authors' | 'titles' | 'all-authors' | 'all-titles' = 'authors';
 
   ngOnInit(): void {
     // Check for query parameter to set initial tab
     this.route.queryParams.subscribe(params => {
-      if (params['type'] === 'authors' || params['type'] === 'titles') {
+      if (params['type'] === 'authors' || params['type'] === 'titles' ||
+          params['type'] === 'all-authors' || params['type'] === 'all-titles') {
         this.searchType = params['type'];
       }
     });
+
+    // Load all data initially for the browse tabs
+    this.loadAllAuthors();
+    this.loadAllTitles();
   }
+
+  allAuthors: Author[] = [];
+  allTitles: Title[] = [];
+  isLoadingAll = false;
 
   authors: Author[] = [];
   titles: Title[] = [];
@@ -50,7 +59,7 @@ export class SearchComponent implements OnInit {
   hasSearched = false;
   errorMessage = '';
 
-  switchTab(type: 'authors' | 'titles'): void {
+  switchTab(type: 'authors' | 'titles' | 'all-authors' | 'all-titles'): void {
     this.searchType = type;
     this.clearResults();
     // Reset child form
@@ -118,6 +127,42 @@ export class SearchComponent implements OnInit {
 
   onTitleSelected(title: Title): void {
     this.router.navigate(['/title', title.isbn]);
+  }
+
+  // Load all authors for browse tab
+  loadAllAuthors(): void {
+    this.isLoadingAll = true;
+    // Search with empty criteria to get all authors
+    this.prhApiService.searchAuthors(undefined, undefined).subscribe({
+      next: (response) => {
+        if (response.author) {
+          this.allAuthors = Array.isArray(response.author) ? response.author : [response.author];
+        }
+        this.isLoadingAll = false;
+      },
+      error: (err) => {
+        console.error('Error loading all authors:', err);
+        this.isLoadingAll = false;
+      }
+    });
+  }
+
+  // Load all titles for browse tab
+  loadAllTitles(): void {
+    this.isLoadingAll = true;
+    // Search with empty string to get all titles
+    this.prhApiService.searchTitles('').subscribe({
+      next: (response) => {
+        if (response.title) {
+          this.allTitles = Array.isArray(response.title) ? response.title : [response.title];
+        }
+        this.isLoadingAll = false;
+      },
+      error: (err) => {
+        console.error('Error loading all titles:', err);
+        this.isLoadingAll = false;
+      }
+    });
   }
 }
 

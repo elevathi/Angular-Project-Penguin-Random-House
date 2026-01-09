@@ -56,4 +56,8 @@ export class TitleDetailComponent implements OnInit {
   goBack(): void {
     this.router.navigate(['/search']);
   }
+
+  getEurPrice(priceUsd: string | undefined): string {
+    return PrhApiService.convertUsdToEur(priceUsd);
+  }
 }

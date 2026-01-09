@@ -6,31 +6,49 @@
       <!-- Search Type Tabs -->
       <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
-          <button 
-            class="nav-link" 
+          <button
+            class="nav-link"
             [class.active]="searchType === 'authors'"
             (click)="switchTab('authors')">
-            <i class="bi bi-people me-1"></i> Avtorji
+            <i class="bi bi-search me-1"></i> Iskanje avtorjev
           </button>
         </li>
         <li class="nav-item">
-          <button 
-            class="nav-link" 
+          <button
+            class="nav-link"
             [class.active]="searchType === 'titles'"
             (click)="switchTab('titles')">
-            <i class="bi bi-book me-1"></i> Naslovi
+            <i class="bi bi-search me-1"></i> Iskanje naslovov
+          </button>
+        </li>
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            [class.active]="searchType === 'all-authors'"
+            (click)="switchTab('all-authors')">
+            <i class="bi bi-people me-1"></i> Vsi avtorji
+          </button>
+        </li>
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            [class.active]="searchType === 'all-titles'"
+            (click)="switchTab('all-titles')">
+            <i class="bi bi-book me-1"></i> Vsi naslovi
           </button>
         </li>
       </ul>
 
-      <!-- Search Form Component (Input/Output demo) -->
-      <app-search-form
-        #searchForm
-        [searchType]="searchType"
-        [isLoading]="isLoading"
-        (authorSearch)="onAuthorSearch($event)"
-        (titleSearch)="onTitleSearch($event)">
-      </app-search-form>
+      <!-- Search Form Component (only show for search tabs) -->
+      @if (searchType === 'authors' || searchType === 'titles') {
+        <app-search-form
+          #searchForm
+          [searchType]="searchType"
+          [isLoading]="isLoading"
+          (authorSearch)="onAuthorSearch($event)"
+          (titleSearch)="onTitleSearch($event)">
+        </app-search-form>
+      }
 
       <!-- Loading -->
       @if (isLoading) {
@@ -88,13 +106,57 @@
         <div class="row g-3">
           @for (title of titles; track title.isbn) {
             <div class="col-md-6">
-              <app-title-card 
+              <app-title-card
                 [title]="title"
                 (titleSelected)="onTitleSelected($event)">
               </app-title-card>
             </div>
           }
         </div>
+      }
+
+      <!-- All Authors Tab -->
+      @if (searchType === 'all-authors') {
+        @if (isLoadingAll) {
+          <app-loader></app-loader>
+        } @else {
+          <h5 class="mb-3">
+            <i class="bi bi-people-fill text-primary me-2"></i>
+            Vsi avtorji ({{ allAuthors.length }})
+          </h5>
+          <div class="row g-3">
+            @for (author of allAuthors; track author.authorid) {
+              <div class="col-md-6 col-lg-4">
+                <app-author-card
+                  [author]="author"
+                  (authorSelected)="onAuthorSelected($event)">
+                </app-author-card>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- All Titles Tab -->
+      @if (searchType === 'all-titles') {
+        @if (isLoadingAll) {
+          <app-loader></app-loader>
+        } @else {
+          <h5 class="mb-3">
+            <i class="bi bi-book-fill text-primary me-2"></i>
+            Vsi naslovi ({{ allTitles.length }})
+          </h5>
+          <div class="row g-3">
+            @for (title of allTitles; track title.isbn) {
+              <div class="col-md-6">
+                <app-title-card
+                  [title]="title"
+                  (titleSelected)="onTitleSelected($event)">
+                </app-title-card>
+              </div>
+            }
+          </div>
+        }
       }
 
     </div>

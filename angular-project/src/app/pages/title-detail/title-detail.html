@@ -106,19 +106,10 @@
           <div class="row mt-3">
             @if (title.priceusa) {
             <div class="col-auto">
-              <div class="card bg-success text-white">
+              <div class="card bg-primary text-white">
                 <div class="card-body py-2 px-3">
-                  <small>Cena (USA)</small>
-                  <h4 class="mb-0">${{ title.priceusa }}</h4>
-                </div>
-              </div>
-            </div>
-            } @if (title.pricecanada) {
-            <div class="col-auto">
-              <div class="card bg-danger text-white">
-                <div class="card-body py-2 px-3">
-                  <small>Cena (CAN)</small>
-                  <h4 class="mb-0">${{ title.pricecanada }}</h4>
+                  <small>Cena (EUR)</small>
+                  <h4 class="mb-0">€{{ getEurPrice(title.priceusa) }}</h4>
                 </div>
               </div>
             </div>

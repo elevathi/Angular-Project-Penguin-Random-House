@@ -27,4 +27,8 @@ export class TitleCardComponent {
   onTitleClick(): void {
     this.titleSelected.emit(this.title);
   }
+
+  getEurPrice(): string {
+    return PrhApiService.convertUsdToEur(this.title.priceusa);
+  }
 }

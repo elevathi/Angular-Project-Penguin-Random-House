@@ -15,6 +15,11 @@ export class MockPrhApiService {
   searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
     let filteredAuthors = [...MOCK_AUTHORS];
 
+    // If no search criteria, return all authors
+    if (!firstName && !lastName) {
+      return of(getMockAuthorsResponse(filteredAuthors)).pipe(delay(this.DELAY_MS));
+    }
+
     if (firstName) {
       filteredAuthors = filteredAuthors.filter(author =>
         author.authorfirst?.toLowerCase().includes(firstName.toLowerCase())
@@ -40,6 +45,11 @@ export class MockPrhApiService {
 
   // TITLES
   searchTitles(keyword: string): Observable<TitlesResponse> {
+    // If no keyword or empty string, return all titles
+    if (!keyword || keyword.trim() === '') {
+      return of(getMockTitlesResponse(MOCK_TITLES)).pipe(delay(this.DELAY_MS));
+    }
+
     const filteredTitles = MOCK_TITLES.filter(title =>
       title.titleweb.toLowerCase().includes(keyword.toLowerCase()) ||
       title.authorweb?.toLowerCase().includes(keyword.toLowerCase()) ||

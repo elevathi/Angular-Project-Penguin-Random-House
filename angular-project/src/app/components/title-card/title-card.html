@@ -30,7 +30,7 @@
         </p>
         @if (title.priceusa) {
         <p class="card-text fw-bold text-success">
-          {{ '$' + title.priceusa }}
+          {{ '€' + getEurPrice() }}
         </p>
         }
       </div>

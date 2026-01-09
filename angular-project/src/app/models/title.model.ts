@@ -9,6 +9,7 @@ export interface Title {
   formatcode: string;
   priceusa?: string;
   pricecanada?: string;
+  priceeur?: string;
   pages?: string;
   onsaledate?: string;
   flapcopy?: string;

@@ -11,8 +11,18 @@ import { environment } from '../../environments/environment';
 export class PrhApiService {
   private baseUrl = '/api'; // Using proxy to avoid CORS issues
   private apiKey = environment.prhApiKey;
+  private static readonly USD_TO_EUR_RATE = 0.92;
 
   constructor(private http: HttpClient) {}
+
+  // Currency conversion utility
+  static convertUsdToEur(priceUsd: string | undefined): string {
+    if (!priceUsd) return '0.00';
+    const usdAmount = parseFloat(priceUsd);
+    if (isNaN(usdAmount)) return '0.00';
+    const eurAmount = usdAmount * PrhApiService.USD_TO_EUR_RATE;
+    return eurAmount.toFixed(2);
+  }
 
   // AUTHORS
   searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
