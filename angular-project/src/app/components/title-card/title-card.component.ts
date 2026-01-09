@@ -7,7 +7,7 @@ import { PrhApiService } from '../../services/prh-api.service';
   selector: 'app-title-card',
   standalone: true,
   imports: [CommonModule],
-  template: './title-card.html',
+  templateUrl: './title-card.html',
  })
 export class TitleCardComponent {
   @Input({ required: true }) title!: Title;
