@@ -52,6 +52,14 @@ export class SearchComponent implements OnInit {
   allTitles: Title[] = [];
   isLoadingAll = false;
 
+  // Pagination for all authors
+  allAuthorsCurrentPage = 1;
+  allAuthorsItemsPerPage = 9;
+
+  // Pagination for all titles
+  allTitlesCurrentPage = 1;
+  allTitlesItemsPerPage = 6;
+
   authors: Author[] = [];
   titles: Title[] = [];
 
@@ -163,6 +171,45 @@ export class SearchComponent implements OnInit {
         this.isLoadingAll = false;
       }
     });
+  }
+
+  // Pagination getters and methods
+  get paginatedAuthors(): Author[] {
+    const start = (this.allAuthorsCurrentPage - 1) * this.allAuthorsItemsPerPage;
+    const end = start + this.allAuthorsItemsPerPage;
+    return this.allAuthors.slice(start, end);
+  }
+
+  get paginatedTitles(): Title[] {
+    const start = (this.allTitlesCurrentPage - 1) * this.allTitlesItemsPerPage;
+    const end = start + this.allTitlesItemsPerPage;
+    return this.allTitles.slice(start, end);
+  }
+
+  get totalAuthorsPages(): number {
+    return Math.ceil(this.allAuthors.length / this.allAuthorsItemsPerPage);
+  }
+
+  get totalTitlesPages(): number {
+    return Math.ceil(this.allTitles.length / this.allTitlesItemsPerPage);
+  }
+
+  get authorsPageNumbers(): number[] {
+    return Array.from({ length: this.totalAuthorsPages }, (_, i) => i + 1);
+  }
+
+  get titlesPageNumbers(): number[] {
+    return Array.from({ length: this.totalTitlesPages }, (_, i) => i + 1);
+  }
+
+  changeAuthorsPage(page: number): void {
+    this.allAuthorsCurrentPage = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  changeTitlesPage(page: number): void {
+    this.allTitlesCurrentPage = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
