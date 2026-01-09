@@ -121,7 +121,8 @@ export class SearchComponent implements OnInit {
     this.errorMessage = '';
     this.authors = [];
 
-    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName).subscribe({
+    // Search with up to 50 results for targeted searches
+    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName, 0, 50).subscribe({
       next: (response) => {
         if (response.author) {
           this.authors = Array.isArray(response.author) ? response.author : [response.author];
@@ -144,7 +145,8 @@ export class SearchComponent implements OnInit {
     this.errorMessage = '';
     this.titles = [];
 
-    this.prhApiService.searchTitles(criteria.keyword).subscribe({
+    // Search with up to 50 results for targeted searches
+    this.prhApiService.searchTitles(criteria.keyword, 0, 50).subscribe({
       next: (response) => {
         if (response.title) {
           this.titles = Array.isArray(response.title) ? response.title : [response.title];
@@ -169,18 +171,21 @@ export class SearchComponent implements OnInit {
     this.router.navigate(['/title', title.isbn]);
   }
 
-  // Load all authors for browse tab
+  // Load all authors for browse tab - progressive loading
   loadAllAuthors(): void {
     this.isLoadingAll = true;
-    // Search with empty criteria to get all authors
-    this.prhApiService.searchAuthors(undefined, undefined).subscribe({
+
+    // Load first page immediately (10 items)
+    this.prhApiService.searchAuthors(undefined, undefined, 0, 10).subscribe({
       next: (response) => {
         if (response.author) {
           this.allAuthors = Array.isArray(response.author) ? response.author : [response.author];
-          // Invalidate cache when new data is loaded
           this._cachedSortedAuthors = null;
         }
         this.isLoadingAll = false;
+
+        // Load additional pages in background
+        this.loadAuthorsInBackground(10);
       },
       error: (err) => {
         console.error('Error loading all authors:', err);
@@ -189,22 +194,77 @@ export class SearchComponent implements OnInit {
     });
   }
 
-  // Load all titles for browse tab
+  // Load additional author pages in background
+  private loadAuthorsInBackground(startIndex: number): void {
+    const pageSize = 50;
+    const maxAuthors = 1000; // Load up to 1000 authors
+
+    if (startIndex >= maxAuthors) return;
+
+    this.prhApiService.searchAuthors(undefined, undefined, startIndex, pageSize).subscribe({
+      next: (response) => {
+        if (response.author) {
+          const newAuthors = Array.isArray(response.author) ? response.author : [response.author];
+          this.allAuthors = [...this.allAuthors, ...newAuthors];
+          this._cachedSortedAuthors = null;
+
+          // Continue loading if we got results
+          if (newAuthors.length === pageSize) {
+            this.loadAuthorsInBackground(startIndex + pageSize);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error loading background authors:', err);
+      }
+    });
+  }
+
+  // Load all titles for browse tab - progressive loading
   loadAllTitles(): void {
     this.isLoadingAll = true;
-    // Search with empty string to get all titles
-    this.prhApiService.searchTitles('').subscribe({
+
+    // Load first page immediately (10 items)
+    this.prhApiService.searchTitles('', 0, 10).subscribe({
       next: (response) => {
         if (response.title) {
           this.allTitles = Array.isArray(response.title) ? response.title : [response.title];
-          // Invalidate cache when new data is loaded
           this._cachedSortedTitles = null;
         }
         this.isLoadingAll = false;
+
+        // Load additional pages in background
+        this.loadTitlesInBackground(10);
       },
       error: (err) => {
         console.error('Error loading all titles:', err);
         this.isLoadingAll = false;
+      }
+    });
+  }
+
+  // Load additional title pages in background
+  private loadTitlesInBackground(startIndex: number): void {
+    const pageSize = 50;
+    const maxTitles = 1000; // Load up to 1000 titles
+
+    if (startIndex >= maxTitles) return;
+
+    this.prhApiService.searchTitles('', startIndex, pageSize).subscribe({
+      next: (response) => {
+        if (response.title) {
+          const newTitles = Array.isArray(response.title) ? response.title : [response.title];
+          this.allTitles = [...this.allTitles, ...newTitles];
+          this._cachedSortedTitles = null;
+
+          // Continue loading if we got results
+          if (newTitles.length === pageSize) {
+            this.loadTitlesInBackground(startIndex + pageSize);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error loading background titles:', err);
       }
     });
   }

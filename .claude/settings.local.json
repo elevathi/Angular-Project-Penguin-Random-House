@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(npx ng generate:*)"
+      "Bash(npx ng generate:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(ng serve:*)",
+      "Bash(python3:*)"
     ]
   }
 }

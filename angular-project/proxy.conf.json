@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "https://reststop.randomhouse.com/resources",
+    "target": "https://api.penguinrandomhouse.com/resources/v2/title/domains/PRH.US",
     "secure": true,
     "changeOrigin": true,
     "pathRewrite": {
