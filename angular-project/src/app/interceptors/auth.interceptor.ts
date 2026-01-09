@@ -1,23 +1,10 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  // Basic Auth za PRH API
-  const username = 'testuser';
-  const password = 'testpassword';
-  const basicAuth = btoa(`${username}:${password}`);
+  // Skip adding auth headers - API key is already in query params
+  // The PRH API uses api_key query parameter, not Basic Auth
 
-  // JWT token (če obstaja)
-  const jwtToken = localStorage.getItem('jwt_token');
+  console.log('Interceptor: Request intercepted', req.url);
 
-  const clonedRequest = req.clone({
-    setHeaders: {
-      'Authorization': `Basic ${basicAuth}`,
-      'Accept': 'application/json',
-      ...(jwtToken ? { 'X-JWT-Token': jwtToken } : {})
-    }
-  });
-
-  console.log('Interceptor: Request intercepted', clonedRequest.url);
-  
-  return next(clonedRequest);
+  return next(req);
 };

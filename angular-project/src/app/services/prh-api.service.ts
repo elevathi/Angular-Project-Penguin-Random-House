@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class PrhApiService {
-  private baseUrl = 'https://reststop.randomhouse.com/resources';
+  private baseUrl = '/api'; // Using proxy to avoid CORS issues
   private apiKey = environment.prhApiKey;
 
   constructor(private http: HttpClient) {}
@@ -18,8 +18,7 @@ export class PrhApiService {
   searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
     let params = new HttpParams()
       .set('start', '0')
-      .set('max', '20')
-      .set('expandLevel', '1')
+      .set('rows', '20')
       .set('api_key', this.apiKey);
 
     if (firstName) params = params.set('firstName', firstName);
@@ -37,9 +36,8 @@ export class PrhApiService {
   searchTitles(keyword: string): Observable<TitlesResponse> {
     const params = new HttpParams()
       .set('start', '0')
-      .set('max', '20')
-      .set('expandLevel', '1')
-      .set('search', keyword)
+      .set('rows', '20')
+      .set('keyword', keyword)
       .set('api_key', this.apiKey);
 
     return this.http.get<TitlesResponse>(`${this.baseUrl}/titles`, { params });
@@ -53,16 +51,17 @@ export class PrhApiService {
   getTitlesByAuthor(authorId: string): Observable<TitlesResponse> {
     const params = new HttpParams()
       .set('start', '0')
-      .set('max', '50')
-      .set('expandLevel', '1')
-      .set('authorid', authorId)
+      .set('rows', '50')
+      .set('authorId', authorId)
       .set('api_key', this.apiKey);
 
     return this.http.get<TitlesResponse>(`${this.baseUrl}/titles`, { params });
   }
 
   // COVER IMAGE URL
+  // Note: This returns the title resource URL. To get cover images, you may need to
+  // parse the response and extract cover data from the title object.
   getCoverImageUrl(isbn: string): string {
-    return `https://reststop.randomhouse.com/resources/titles/${isbn}?api_key=${this.apiKey}`;
+    return `/api/titles/${isbn}?api_key=${this.apiKey}`;
   }
 }
