@@ -9,7 +9,8 @@ import { HighlightDirective } from '../../directives/highlight.directive';
 @Component({
   selector: 'app-title-detail',
   imports: [CommonModule, LoaderComponent, HighlightDirective],
-  templateUrl: 'title-detail.html'
+  templateUrl: 'title-detail.html',
+  styleUrl: 'title-detail.css',
 })
 export class TitleDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);

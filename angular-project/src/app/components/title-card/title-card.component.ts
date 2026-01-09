@@ -8,6 +8,7 @@ import { PrhApiService } from '../../services/prh-api.service';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './title-card.html',
+  styleUrl: './title-card.css'
  })
 export class TitleCardComponent {
   @Input({ required: true }) title!: Title;

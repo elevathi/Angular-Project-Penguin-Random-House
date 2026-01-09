@@ -12,7 +12,8 @@ import { HighlightDirective } from '../../directives/highlight.directive';
   selector: 'app-author-detail',
   standalone: true,
   imports: [CommonModule, LoaderComponent, TitleCardComponent, HighlightDirective],
-  templateUrl: './author-detail.html'
+  templateUrl: './author-detail.html',
+  styleUrl:'author-detail.css'
 })
 export class AuthorDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
