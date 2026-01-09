@@ -134,10 +134,32 @@
         @if (isLoadingAll) {
           <app-loader></app-loader>
         } @else {
-          <h5 class="mb-3">
-            <i class="bi bi-people-fill text-primary me-2"></i>
-            Vsi avtorji ({{ allAuthors.length }})
-          </h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+              <i class="bi bi-people-fill text-primary me-2"></i>
+              Vsi avtorji ({{ allAuthors.length }})
+            </h5>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="authorsSortBy === 'firstName'"
+                [class.btn-outline-primary]="authorsSortBy !== 'firstName'"
+                (click)="changeAuthorsSort('firstName')">
+                <i class="bi" [ngClass]="getAuthorSortIcon('firstName')"></i>
+                Ime
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="authorsSortBy === 'lastName'"
+                [class.btn-outline-primary]="authorsSortBy !== 'lastName'"
+                (click)="changeAuthorsSort('lastName')">
+                <i class="bi" [ngClass]="getAuthorSortIcon('lastName')"></i>
+                Priimek
+              </button>
+            </div>
+          </div>
           <div class="row g-3">
             @for (author of paginatedAuthors; track author.authorid) {
               <div class="col-md-6 col-lg-4">
@@ -163,10 +185,50 @@
         @if (isLoadingAll) {
           <app-loader></app-loader>
         } @else {
-          <h5 class="mb-3">
-            <i class="bi bi-book-fill text-primary me-2"></i>
-            Vsi naslovi ({{ allTitles.length }})
-          </h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+              <i class="bi bi-book-fill text-primary me-2"></i>
+              Vsi naslovi ({{ allTitles.length }})
+            </h5>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="titlesSortBy === 'title'"
+                [class.btn-outline-primary]="titlesSortBy !== 'title'"
+                (click)="changeTitlesSort('title')">
+                <i class="bi" [ngClass]="getTitleSortIcon('title')"></i>
+                Naslov
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="titlesSortBy === 'author'"
+                [class.btn-outline-primary]="titlesSortBy !== 'author'"
+                (click)="changeTitlesSort('author')">
+                <i class="bi" [ngClass]="getTitleSortIcon('author')"></i>
+                Avtor
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="titlesSortBy === 'price'"
+                [class.btn-outline-primary]="titlesSortBy !== 'price'"
+                (click)="changeTitlesSort('price')">
+                <i class="bi" [ngClass]="getTitleSortIcon('price')"></i>
+                Cena
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-primary]="titlesSortBy === 'date'"
+                [class.btn-outline-primary]="titlesSortBy !== 'date'"
+                (click)="changeTitlesSort('date')">
+                <i class="bi" [ngClass]="getTitleSortIcon('date')"></i>
+                Datum
+              </button>
+            </div>
+          </div>
           <div class="row g-3">
             @for (title of paginatedTitles; track title.isbn) {
               <div class="col-md-6">

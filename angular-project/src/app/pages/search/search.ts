@@ -43,11 +43,14 @@ export class SearchComponent implements OnInit {
           params['type'] === 'all-authors' || params['type'] === 'all-titles') {
         this.searchType = params['type'];
       }
-    });
 
-    // Load all data initially for the browse tabs
-    this.loadAllAuthors();
-    this.loadAllTitles();
+      // Lazy load data only for the active tab
+      if (this.searchType === 'all-authors' && this.allAuthors.length === 0) {
+        this.loadAllAuthors();
+      } else if (this.searchType === 'all-titles' && this.allTitles.length === 0) {
+        this.loadAllTitles();
+      }
+    });
   }
 
   allAuthors: Author[] = [];
@@ -68,6 +71,18 @@ export class SearchComponent implements OnInit {
   searchTitlesCurrentPage = 1;
   searchTitlesItemsPerPage = 6;
 
+  // Sorting for authors
+  authorsSortBy: 'firstName' | 'lastName' = 'lastName';
+  authorsSortOrder: 'asc' | 'desc' = 'asc';
+
+  // Sorting for titles
+  titlesSortBy: 'title' | 'author' | 'price' | 'date' = 'title';
+  titlesSortOrder: 'asc' | 'desc' = 'asc';
+
+  // Cached sorted results
+  private _cachedSortedAuthors: Author[] | null = null;
+  private _cachedSortedTitles: Title[] | null = null;
+
   authors: Author[] = [];
   titles: Title[] = [];
 
@@ -81,6 +96,13 @@ export class SearchComponent implements OnInit {
     // Reset child form
     if (this.searchFormComponent) {
       this.searchFormComponent.resetForms();
+    }
+
+    // Lazy load data only when switching to browse tabs
+    if (type === 'all-authors' && this.allAuthors.length === 0) {
+      this.loadAllAuthors();
+    } else if (type === 'all-titles' && this.allTitles.length === 0) {
+      this.loadAllTitles();
     }
   }
 
@@ -155,6 +177,8 @@ export class SearchComponent implements OnInit {
       next: (response) => {
         if (response.author) {
           this.allAuthors = Array.isArray(response.author) ? response.author : [response.author];
+          // Invalidate cache when new data is loaded
+          this._cachedSortedAuthors = null;
         }
         this.isLoadingAll = false;
       },
@@ -173,6 +197,8 @@ export class SearchComponent implements OnInit {
       next: (response) => {
         if (response.title) {
           this.allTitles = Array.isArray(response.title) ? response.title : [response.title];
+          // Invalidate cache when new data is loaded
+          this._cachedSortedTitles = null;
         }
         this.isLoadingAll = false;
       },
@@ -183,25 +209,119 @@ export class SearchComponent implements OnInit {
     });
   }
 
+  // Sorting methods
+  private sortAuthors(authors: Author[]): Author[] {
+    const sorted = [...authors];
+    sorted.sort((a, b) => {
+      let compareA: string;
+      let compareB: string;
+
+      if (this.authorsSortBy === 'firstName') {
+        compareA = (a.authorfirst || '').toLowerCase();
+        compareB = (b.authorfirst || '').toLowerCase();
+      } else {
+        compareA = (a.authorlast || '').toLowerCase();
+        compareB = (b.authorlast || '').toLowerCase();
+      }
+
+      if (compareA < compareB) return this.authorsSortOrder === 'asc' ? -1 : 1;
+      if (compareA > compareB) return this.authorsSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }
+
+  private sortTitles(titles: Title[]): Title[] {
+    const sorted = [...titles];
+    sorted.sort((a, b) => {
+      let compareA: any;
+      let compareB: any;
+
+      switch (this.titlesSortBy) {
+        case 'title':
+          compareA = (a.titleweb || '').toLowerCase();
+          compareB = (b.titleweb || '').toLowerCase();
+          break;
+        case 'author':
+          compareA = (a.authorweb || '').toLowerCase();
+          compareB = (b.authorweb || '').toLowerCase();
+          break;
+        case 'price':
+          compareA = parseFloat(a.priceusa || '0');
+          compareB = parseFloat(b.priceusa || '0');
+          break;
+        case 'date':
+          compareA = new Date(a.onsaledate || '1900-01-01').getTime();
+          compareB = new Date(b.onsaledate || '1900-01-01').getTime();
+          break;
+      }
+
+      if (compareA < compareB) return this.titlesSortOrder === 'asc' ? -1 : 1;
+      if (compareA > compareB) return this.titlesSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }
+
+  changeAuthorsSort(sortBy: 'firstName' | 'lastName'): void {
+    if (this.authorsSortBy === sortBy) {
+      this.authorsSortOrder = this.authorsSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.authorsSortBy = sortBy;
+      this.authorsSortOrder = 'asc';
+    }
+    // Invalidate cache when sort changes
+    this._cachedSortedAuthors = null;
+    this.allAuthorsCurrentPage = 1;
+  }
+
+  changeTitlesSort(sortBy: 'title' | 'author' | 'price' | 'date'): void {
+    if (this.titlesSortBy === sortBy) {
+      this.titlesSortOrder = this.titlesSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.titlesSortBy = sortBy;
+      this.titlesSortOrder = 'asc';
+    }
+    // Invalidate cache when sort changes
+    this._cachedSortedTitles = null;
+    this.allTitlesCurrentPage = 1;
+  }
+
   // Pagination getters and methods for browse tabs
   get paginatedAuthors(): Author[] {
+    const sorted = this.sortedAuthors;
     const start = (this.allAuthorsCurrentPage - 1) * this.allAuthorsItemsPerPage;
     const end = start + this.allAuthorsItemsPerPage;
-    return this.allAuthors.slice(start, end);
+    return sorted.slice(start, end);
   }
 
   get paginatedTitles(): Title[] {
+    const sorted = this.sortedTitles;
     const start = (this.allTitlesCurrentPage - 1) * this.allTitlesItemsPerPage;
     const end = start + this.allTitlesItemsPerPage;
-    return this.allTitles.slice(start, end);
+    return sorted.slice(start, end);
+  }
+
+  get sortedAuthors(): Author[] {
+    if (!this._cachedSortedAuthors) {
+      this._cachedSortedAuthors = this.sortAuthors(this.allAuthors);
+    }
+    return this._cachedSortedAuthors;
+  }
+
+  get sortedTitles(): Title[] {
+    if (!this._cachedSortedTitles) {
+      this._cachedSortedTitles = this.sortTitles(this.allTitles);
+    }
+    return this._cachedSortedTitles;
   }
 
   get totalAuthorsPages(): number {
-    return Math.ceil(this.allAuthors.length / this.allAuthorsItemsPerPage);
+    return Math.ceil(this.sortedAuthors.length / this.allAuthorsItemsPerPage);
   }
 
   get totalTitlesPages(): number {
-    return Math.ceil(this.allTitles.length / this.allTitlesItemsPerPage);
+    return Math.ceil(this.sortedTitles.length / this.allTitlesItemsPerPage);
   }
 
   changeAuthorsPage(page: number): void {
@@ -243,6 +363,27 @@ export class SearchComponent implements OnInit {
   changeSearchTitlesPage(page: number): void {
     this.searchTitlesCurrentPage = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Helper methods for template
+  getAuthorSortIcon(sortType: 'firstName' | 'lastName'): string {
+    if (this.authorsSortBy !== sortType) return 'bi-sort-alpha-down';
+    return this.authorsSortOrder === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up';
+  }
+
+  getTitleSortIcon(sortType: 'title' | 'author' | 'price' | 'date'): string {
+    if (this.titlesSortBy !== sortType) {
+      return sortType === 'price' ? 'bi-sort-numeric-down' :
+             sortType === 'date' ? 'bi-sort-down' : 'bi-sort-alpha-down';
+    }
+
+    if (sortType === 'price') {
+      return this.titlesSortOrder === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up';
+    } else if (sortType === 'date') {
+      return this.titlesSortOrder === 'asc' ? 'bi-sort-down' : 'bi-sort-up';
+    } else {
+      return this.titlesSortOrder === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up';
+    }
   }
 }
 
