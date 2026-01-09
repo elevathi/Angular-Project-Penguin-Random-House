@@ -7,7 +7,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: ''
+  templateUrl: './home.html'
 })
 export class HomeComponent {
   authService = inject(AuthService);

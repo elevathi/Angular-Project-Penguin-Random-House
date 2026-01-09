@@ -32,6 +32,11 @@
         (titleSearch)="onTitleSearch($event)">
       </app-search-form>
 
+      <!-- Loading -->
+      @if (isLoading) {
+        <app-loader></app-loader>
+      }
+
       <!-- Error -->
       @if (errorMessage) {
         <div class="alert alert-danger">
