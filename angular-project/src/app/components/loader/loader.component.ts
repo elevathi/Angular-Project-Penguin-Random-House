@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-loader',
-  imports: [CommonModule]
+  imports: [CommonModule],
+  templateUrl: './loader.html'
+
 })
 export class LoaderComponent {
   @Input() message = 'Nalaganje...';

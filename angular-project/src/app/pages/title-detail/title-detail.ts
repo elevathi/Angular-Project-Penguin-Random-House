@@ -8,8 +8,8 @@ import { HighlightDirective } from '../../directives/highlight.directive';
 
 @Component({
   selector: 'app-title-detail',
-  standalone: true,
-  imports: [CommonModule, LoaderComponent, HighlightDirective]
+  imports: [CommonModule, LoaderComponent, HighlightDirective],
+  templateUrl: 'title-detail.html'
 })
 export class TitleDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);

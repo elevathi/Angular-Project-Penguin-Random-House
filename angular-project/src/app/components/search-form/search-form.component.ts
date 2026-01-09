@@ -14,7 +14,8 @@ export interface TitleSearchCriteria {
 @Component({
   selector: 'app-search-form',
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule],
+  templateUrl: './search-form.html'
 })
 export class SearchFormComponent {
   // INPUTS

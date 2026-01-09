@@ -23,6 +23,7 @@ import {
     TitleCardComponent,
     LoaderComponent,
   ],
+  templateUrl: './search.html'
 })
 export class SearchComponent {
   @ViewChild('searchForm') searchFormComponent!: SearchFormComponent;

@@ -6,6 +6,7 @@ import { HighlightDirective } from '../../directives/highlight.directive';
 @Component({
   selector: 'app-author-card',
   imports: [CommonModule, HighlightDirective],
+  templateUrl: './author-card.html'
 })
 export class AuthorCardComponent {
   @Input({ required: true }) author!: Author;
