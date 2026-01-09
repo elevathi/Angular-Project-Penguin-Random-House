@@ -7,6 +7,7 @@ import { Title } from '../../models/title.model';
 import { AuthorCardComponent } from '../../components/author-card/author-card.component';
 import { TitleCardComponent } from '../../components/title-card/title-card.component';
 import { LoaderComponent } from '../../components/loader/loader.component';
+import { PaginationComponent } from '../../components/pagination/pagination';
 import {
   SearchFormComponent,
   AuthorSearchCriteria,
@@ -22,6 +23,7 @@ import {
     AuthorCardComponent,
     TitleCardComponent,
     LoaderComponent,
+    PaginationComponent,
   ],
   templateUrl: './search.html'
 })
@@ -60,6 +62,12 @@ export class SearchComponent implements OnInit {
   allTitlesCurrentPage = 1;
   allTitlesItemsPerPage = 6;
 
+  // Pagination for search results
+  searchAuthorsCurrentPage = 1;
+  searchAuthorsItemsPerPage = 9;
+  searchTitlesCurrentPage = 1;
+  searchTitlesItemsPerPage = 6;
+
   authors: Author[] = [];
   titles: Title[] = [];
 
@@ -81,6 +89,8 @@ export class SearchComponent implements OnInit {
     this.titles = [];
     this.hasSearched = false;
     this.errorMessage = '';
+    this.searchAuthorsCurrentPage = 1;
+    this.searchTitlesCurrentPage = 1;
   }
 
   // Handle event from child component (Output)
@@ -173,7 +183,7 @@ export class SearchComponent implements OnInit {
     });
   }
 
-  // Pagination getters and methods
+  // Pagination getters and methods for browse tabs
   get paginatedAuthors(): Author[] {
     const start = (this.allAuthorsCurrentPage - 1) * this.allAuthorsItemsPerPage;
     const end = start + this.allAuthorsItemsPerPage;
@@ -194,14 +204,6 @@ export class SearchComponent implements OnInit {
     return Math.ceil(this.allTitles.length / this.allTitlesItemsPerPage);
   }
 
-  get authorsPageNumbers(): number[] {
-    return Array.from({ length: this.totalAuthorsPages }, (_, i) => i + 1);
-  }
-
-  get titlesPageNumbers(): number[] {
-    return Array.from({ length: this.totalTitlesPages }, (_, i) => i + 1);
-  }
-
   changeAuthorsPage(page: number): void {
     this.allAuthorsCurrentPage = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -209,6 +211,37 @@ export class SearchComponent implements OnInit {
 
   changeTitlesPage(page: number): void {
     this.allTitlesCurrentPage = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Pagination getters and methods for search results
+  get paginatedSearchAuthors(): Author[] {
+    const start = (this.searchAuthorsCurrentPage - 1) * this.searchAuthorsItemsPerPage;
+    const end = start + this.searchAuthorsItemsPerPage;
+    return this.authors.slice(start, end);
+  }
+
+  get paginatedSearchTitles(): Title[] {
+    const start = (this.searchTitlesCurrentPage - 1) * this.searchTitlesItemsPerPage;
+    const end = start + this.searchTitlesItemsPerPage;
+    return this.titles.slice(start, end);
+  }
+
+  get totalSearchAuthorsPages(): number {
+    return Math.ceil(this.authors.length / this.searchAuthorsItemsPerPage);
+  }
+
+  get totalSearchTitlesPages(): number {
+    return Math.ceil(this.titles.length / this.searchTitlesItemsPerPage);
+  }
+
+  changeSearchAuthorsPage(page: number): void {
+    this.searchAuthorsCurrentPage = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  changeSearchTitlesPage(page: number): void {
+    this.searchTitlesCurrentPage = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }

@@ -86,15 +86,22 @@
           Najdeni avtorji ({{ authors.length }})
         </h5>
         <div class="row g-3">
-          @for (author of authors; track author.authorid) {
+          @for (author of paginatedSearchAuthors; track author.authorid) {
             <div class="col-md-6 col-lg-4">
-              <app-author-card 
+              <app-author-card
                 [author]="author"
                 (authorSelected)="onAuthorSelected($event)">
               </app-author-card>
             </div>
           }
         </div>
+
+        <!-- Pagination for Search Authors -->
+        <app-pagination
+          [currentPage]="searchAuthorsCurrentPage"
+          [totalPages]="totalSearchAuthorsPages"
+          (pageChange)="changeSearchAuthorsPage($event)">
+        </app-pagination>
       }
 
       <!-- Title Results -->
@@ -104,7 +111,7 @@
           Najdeni naslovi ({{ titles.length }})
         </h5>
         <div class="row g-3">
-          @for (title of titles; track title.isbn) {
+          @for (title of paginatedSearchTitles; track title.isbn) {
             <div class="col-md-6">
               <app-title-card
                 [title]="title"
@@ -113,6 +120,13 @@
             </div>
           }
         </div>
+
+        <!-- Pagination for Search Titles -->
+        <app-pagination
+          [currentPage]="searchTitlesCurrentPage"
+          [totalPages]="totalSearchTitlesPages"
+          (pageChange)="changeSearchTitlesPage($event)">
+        </app-pagination>
       }
 
       <!-- All Authors Tab -->
@@ -136,29 +150,11 @@
           </div>
 
           <!-- Pagination for Authors -->
-          @if (totalAuthorsPages > 1) {
-            <nav class="mt-4">
-              <ul class="pagination justify-content-center">
-                <li class="page-item" [class.disabled]="allAuthorsCurrentPage === 1">
-                  <button type="button" class="page-link" (click)="changeAuthorsPage(allAuthorsCurrentPage - 1)" [disabled]="allAuthorsCurrentPage === 1">
-                    <i class="bi bi-chevron-left"></i>
-                  </button>
-                </li>
-                @for (pageNum of authorsPageNumbers; track pageNum) {
-                  <li class="page-item" [class.active]="allAuthorsCurrentPage === pageNum">
-                    <button type="button" class="page-link" (click)="changeAuthorsPage(pageNum)">
-                      {{ pageNum }}
-                    </button>
-                  </li>
-                }
-                <li class="page-item" [class.disabled]="allAuthorsCurrentPage === totalAuthorsPages">
-                  <button type="button" class="page-link" (click)="changeAuthorsPage(allAuthorsCurrentPage + 1)" [disabled]="allAuthorsCurrentPage === totalAuthorsPages">
-                    <i class="bi bi-chevron-right"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          }
+          <app-pagination
+            [currentPage]="allAuthorsCurrentPage"
+            [totalPages]="totalAuthorsPages"
+            (pageChange)="changeAuthorsPage($event)">
+          </app-pagination>
         }
       }
 
@@ -183,29 +179,11 @@
           </div>
 
           <!-- Pagination for Titles -->
-          @if (totalTitlesPages > 1) {
-            <nav class="mt-4">
-              <ul class="pagination justify-content-center">
-                <li class="page-item" [class.disabled]="allTitlesCurrentPage === 1">
-                  <button type="button" class="page-link" (click)="changeTitlesPage(allTitlesCurrentPage - 1)" [disabled]="allTitlesCurrentPage === 1">
-                    <i class="bi bi-chevron-left"></i>
-                  </button>
-                </li>
-                @for (pageNum of titlesPageNumbers; track pageNum) {
-                  <li class="page-item" [class.active]="allTitlesCurrentPage === pageNum">
-                    <button type="button" class="page-link" (click)="changeTitlesPage(pageNum)">
-                      {{ pageNum }}
-                    </button>
-                  </li>
-                }
-                <li class="page-item" [class.disabled]="allTitlesCurrentPage === totalTitlesPages">
-                  <button type="button" class="page-link" (click)="changeTitlesPage(allTitlesCurrentPage + 1)" [disabled]="allTitlesCurrentPage === totalTitlesPages">
-                    <i class="bi bi-chevron-right"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          }
+          <app-pagination
+            [currentPage]="allTitlesCurrentPage"
+            [totalPages]="totalTitlesPages"
+            (pageChange)="changeTitlesPage($event)">
+          </app-pagination>
         }
       }
 
