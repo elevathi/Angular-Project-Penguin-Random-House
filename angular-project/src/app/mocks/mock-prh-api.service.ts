@@ -50,11 +50,30 @@ export class MockPrhApiService {
       return of(getMockTitlesResponse(MOCK_TITLES)).pipe(delay(this.DELAY_MS));
     }
 
-    const filteredTitles = MOCK_TITLES.filter(title =>
-      title.titleweb.toLowerCase().includes(keyword.toLowerCase()) ||
-      title.authorweb?.toLowerCase().includes(keyword.toLowerCase()) ||
-      title.subjectcategorydescription1?.toLowerCase().includes(keyword.toLowerCase())
-    );
+    const searchTerm = keyword.toLowerCase();
+
+    const filteredTitles = MOCK_TITLES.filter(title => {
+      const titleText = title.titleweb.toLowerCase();
+      const authorText = title.authorweb?.toLowerCase() || '';
+      const categoryText = title.subjectcategorydescription1?.toLowerCase() || '';
+
+      // Match if:
+      // 1. Title starts with the search term
+      // 2. Any word in title starts with the search term
+      // 3. Author name starts with or contains the search term as a word
+      // 4. Category starts with or contains the search term as a word
+
+      const titleWords = titleText.split(/\s+/);
+      const authorWords = authorText.split(/\s+/);
+      const categoryWords = categoryText.split(/\s+/);
+
+      return titleText.startsWith(searchTerm) ||
+             titleWords.some(word => word.startsWith(searchTerm)) ||
+             authorText.startsWith(searchTerm) ||
+             authorWords.some(word => word.startsWith(searchTerm)) ||
+             categoryText.startsWith(searchTerm) ||
+             categoryWords.some(word => word.startsWith(searchTerm));
+    });
 
     return of(getMockTitlesResponse(filteredTitles)).pipe(delay(this.DELAY_MS));
   }
