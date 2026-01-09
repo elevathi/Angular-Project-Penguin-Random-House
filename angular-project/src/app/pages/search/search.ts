@@ -1,6 +1,6 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { PrhApiService } from '../../services/prh-api.service';
 import { Author } from '../../models/author.model';
 import { Title } from '../../models/title.model';
@@ -25,13 +25,23 @@ import {
   ],
   templateUrl: './search.html'
 })
-export class SearchComponent {
+export class SearchComponent implements OnInit {
   @ViewChild('searchForm') searchFormComponent!: SearchFormComponent;
 
   private prhApiService = inject(PrhApiService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   searchType: 'authors' | 'titles' = 'authors';
+
+  ngOnInit(): void {
+    // Check for query parameter to set initial tab
+    this.route.queryParams.subscribe(params => {
+      if (params['type'] === 'authors' || params['type'] === 'titles') {
+        this.searchType = params['type'];
+      }
+    });
+  }
 
   authors: Author[] = [];
   titles: Title[] = [];

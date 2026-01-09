@@ -13,7 +13,7 @@
 
       <div class="row g-4 mb-5">
         <div class="col-md-4">
-          <div class="card h-100 border-primary">
+          <div class="card h-100 border-primary cursor-pointer card-hover" (click)="navigateToSearch('authors')">
             <div class="card-body text-center">
               <i class="bi bi-search display-4 text-primary mb-3"></i>
               <h5>Iskanje</h5>
@@ -22,7 +22,7 @@
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card h-100 border-success">
+          <div class="card h-100 border-success cursor-pointer card-hover" (click)="navigateToSearch('authors')">
             <div class="card-body text-center">
               <i class="bi bi-person-lines-fill display-4 text-success mb-3"></i>
               <h5>Avtorji</h5>
@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card h-100 border-warning">
+          <div class="card h-100 border-warning cursor-pointer card-hover" (click)="navigateToSearch('titles')">
             <div class="card-body text-center">
               <i class="bi bi-journal-richtext display-4 text-warning mb-3"></i>
               <h5>Naslovi</h5>

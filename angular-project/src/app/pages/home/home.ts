@@ -1,14 +1,24 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: './home.html'
+  templateUrl: './home.html',
+  styleUrl: './home.css'
 })
 export class HomeComponent {
   authService = inject(AuthService);
+  private router = inject(Router);
+
+  navigateToSearch(type: 'authors' | 'titles'): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/search'], { queryParams: { type } });
+    } else {
+      this.router.navigate(['/login']);
+    }
+  }
 }
