@@ -16,7 +16,9 @@ export class HomeComponent {
 
   navigateToSearch(type: 'authors' | 'titles'): void {
     if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/search'], { queryParams: { type } });
+      // Navigate to "All Authors" or "All Titles" tabs instead of search tabs
+      const browseType = type === 'authors' ? 'all-authors' : 'all-titles';
+      this.router.navigate(['/search'], { queryParams: { type: browseType } });
     } else {
       this.router.navigate(['/login']);
     }
