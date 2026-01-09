@@ -1,1 +1,148 @@
-<p>title-detail works!</p>
+<div class="container mt-4">
+  <!-- Back button -->
+  <button class="btn btn-outline-secondary mb-4" (click)="goBack()">
+    <i class="bi bi-arrow-left me-1"></i> Nazaj
+  </button>
+
+  <!-- Loading -->
+  @if (isLoading) {
+  <app-loader message="Nalagam podrobnosti knjige..."></app-loader>
+  }
+
+  <!-- Error -->
+  @if (errorMessage) {
+  <div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    {{ errorMessage }}
+  </div>
+  }
+
+  <!-- Title Details -->
+  @if (title && !isLoading) {
+  <div class="card">
+    <div class="card-header bg-success text-white">
+      <h3 class="mb-0">
+        <i class="bi bi-book-fill me-2"></i>
+        {{ title.titleweb }}
+      </h3>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <!-- Cover Image -->
+        <div class="col-md-3 text-center mb-4">
+          <img
+            [src]="getCoverUrl()"
+            [alt]="title.titleweb"
+            class="img-fluid rounded shadow"
+            (error)="onImageError($event)"
+          />
+
+          <!-- Format Badge -->
+          <div class="mt-3">
+            <span
+              class="badge fs-6"
+              [ngClass]="{
+                'bg-primary': title.formatcode === 'HC',
+                'bg-secondary': title.formatcode === 'MM',
+                'bg-success': title.formatcode === 'EL',
+                'bg-info': !['HC', 'MM', 'EL'].includes(title.formatcode || '')
+              }"
+            >
+              {{ title.formatname }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Book Info -->
+        <div class="col-md-9">
+          <table class="table">
+            <tbody>
+              <tr appHighlight="#f0fff0">
+                <th style="width: 180px">Avtor:</th>
+                <td>{{ title.authorweb }}</td>
+              </tr>
+              <tr>
+                <th>ISBN-13:</th>
+                <td>
+                  <code>{{ title.isbn }}</code>
+                </td>
+              </tr>
+              <tr>
+                <th>ISBN-10:</th>
+                <td>
+                  <code>{{ title.isbn10 }}</code>
+                </td>
+              </tr>
+              @if (title.pages) {
+              <tr>
+                <th>Število strani:</th>
+                <td>{{ title.pages }}</td>
+              </tr>
+              } @if (title.onsaledate) {
+              <tr>
+                <th>Datum izdaje:</th>
+                <td>{{ title.onsaledate }}</td>
+              </tr>
+              } @if (title.division) {
+              <tr>
+                <th>Divizija:</th>
+                <td>{{ title.division }}</td>
+              </tr>
+              } @if (title.imprint) {
+              <tr>
+                <th>Založba:</th>
+                <td>{{ title.imprint }}</td>
+              </tr>
+              } @if (title.subjectcategorydescription1) {
+              <tr>
+                <th>Kategorija:</th>
+                <td>{{ title.subjectcategorydescription1 }}</td>
+              </tr>
+              }
+            </tbody>
+          </table>
+
+          <!-- Prices -->
+          <div class="row mt-3">
+            @if (title.priceusa) {
+            <div class="col-auto">
+              <div class="card bg-success text-white">
+                <div class="card-body py-2 px-3">
+                  <small>Cena (USA)</small>
+                  <h4 class="mb-0">${{ title.priceusa }}</h4>
+                </div>
+              </div>
+            </div>
+            } @if (title.pricecanada) {
+            <div class="col-auto">
+              <div class="card bg-danger text-white">
+                <div class="card-body py-2 px-3">
+                  <small>Cena (CAN)</small>
+                  <h4 class="mb-0">${{ title.pricecanada }}</h4>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Flap Copy / Description -->
+      @if (title.flapcopy) {
+      <div class="mt-4">
+        <h5><i class="bi bi-file-text me-2"></i>Opis</h5>
+        <div class="p-3 bg-light rounded" [innerHTML]="title.flapcopy"></div>
+      </div>
+      }
+
+      <!-- Author Bio -->
+      @if (title.authorbio) {
+      <div class="mt-4">
+        <h5><i class="bi bi-person me-2"></i>O avtorju</h5>
+        <div class="p-3 bg-light rounded" [innerHTML]="title.authorbio"></div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+</div>
