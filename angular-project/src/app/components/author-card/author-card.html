@@ -1,1 +1,15 @@
-<p>author-card works!</p>
+<div class="card h-100 cursor-pointer" appHighlight="#e3f2fd" (click)="onAuthorClick()">
+  <div class="card-body">
+    <h5 class="card-title">
+      <i class="bi bi-person me-2"></i>
+      {{ author.authordisplay }}
+    </h5>
+    <p class="card-text text-muted small">ID: {{ author.authorid }}</p>
+    @if (author.spotlight) {
+    <p class="card-text small" [innerHTML]="author.spotlight | slice : 0 : 150"></p>
+    }
+  </div>
+  <div class="card-footer bg-transparent">
+    <small class="text-muted"> Klikni za podrobnosti </small>
+  </div>
+</div>

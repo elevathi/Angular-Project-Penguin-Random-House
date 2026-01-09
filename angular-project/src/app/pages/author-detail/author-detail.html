@@ -1,1 +1,111 @@
-<p>author-detail works!</p>
+<div class="container mt-4">
+      
+      <!-- Back button -->
+      <button class="btn btn-outline-secondary mb-4" (click)="goBack()">
+        <i class="bi bi-arrow-left me-1"></i> Nazaj
+      </button>
+
+      <!-- Loading -->
+      @if (isLoading) {
+        <app-loader message="Nalagam podrobnosti avtorja..."></app-loader>
+      }
+
+      <!-- Error -->
+      @if (errorMessage) {
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <!-- Author Details -->
+      @if (author && !isLoading) {
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">
+              <i class="bi bi-person-fill me-2"></i>
+              {{ author.authordisplay }}
+            </h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                
+                <!-- Author Info -->
+                <table class="table table-borderless">
+                  <tbody>
+                    <tr>
+                      <th style="width: 150px;">ID:</th>
+                      <td>{{ author.authorid }}</td>
+                    </tr>
+                    <tr>
+                      <th>Ime:</th>
+                      <td>{{ author.authorfirst }}</td>
+                    </tr>
+                    <tr>
+                      <th>Priimek:</th>
+                      <td>{{ author.authorlast }}</td>
+                    </tr>
+                    @if (author.photocredit) {
+                      <tr>
+                        <th>Foto kredit:</th>
+                        <td>{{ author.photocredit }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+
+                <!-- Spotlight / Bio -->
+                @if (author.spotlight) {
+                  <div class="mt-4">
+                    <h5>O avtorju</h5>
+                    <div 
+                      class="p-3 bg-light rounded"
+                      [innerHTML]="author.spotlight"
+                      appHighlight="#f8f9fa">
+                    </div>
+                  </div>
+                }
+
+              </div>
+              <div class="col-md-4">
+                <!-- Stats card -->
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <i class="bi bi-book display-1 text-primary"></i>
+                    <h4 class="mt-3">{{ authorTitles.length }}</h4>
+                    <p class="text-muted">Knjig v bazi</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Author's Titles -->
+        @if (isLoadingTitles) {
+          <app-loader message="Nalagam knjige avtorja..." height="100px"></app-loader>
+        } @else if (authorTitles.length > 0) {
+          <h4 class="mb-3">
+            <i class="bi bi-journal-text me-2"></i>
+            Knjige avtorja
+          </h4>
+          <div class="row g-3">
+            @for (title of authorTitles; track title.isbn) {
+              <div class="col-md-6">
+                <app-title-card 
+                  [title]="title"
+                  (titleSelected)="onTitleSelected($event)">
+                </app-title-card>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Ni najdenih knjig za tega avtorja.
+          </div>
+        }
+      }
+
+    </div>

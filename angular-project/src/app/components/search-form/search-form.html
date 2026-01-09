@@ -1,1 +1,95 @@
-<p>search-form works!</p>
+<!-- Author Search Form (TDF) -->
+@if (searchType === 'authors') {
+<form #authorForm="ngForm" (ngSubmit)="onAuthorSearch(authorForm)" class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label for="firstName" class="form-label">Ime</label>
+      <input
+        type="text"
+        class="form-control"
+        id="firstName"
+        name="firstName"
+        [(ngModel)]="authorCriteria.firstName"
+        placeholder="npr. Dan"
+        [disabled]="isLoading"
+      />
+    </div>
+    <div class="col-md-4">
+      <label for="lastName" class="form-label">Priimek</label>
+      <input
+        type="text"
+        class="form-control"
+        id="lastName"
+        name="lastName"
+        [(ngModel)]="authorCriteria.lastName"
+        placeholder="npr. Brown"
+        required
+        minlength="2"
+        #lastName="ngModel"
+        [disabled]="isLoading"
+        [ngClass]="{ 'is-invalid': lastName.invalid && lastName.touched }"
+      />
+      @if (lastName.invalid && lastName.touched) {
+      <div class="invalid-feedback">
+        @if (lastName.errors?.['required']) { Priimek je obvezen. } @if
+        (lastName.errors?.['minlength']) { Minimalno 2 znaka. }
+      </div>
+      }
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button
+        type="submit"
+        class="btn btn-primary w-100"
+        [disabled]="authorForm.invalid || isLoading"
+      >
+        @if (isLoading) {
+        <span class="spinner-border spinner-border-sm me-1"></span>
+        Iščem... } @else {
+        <i class="bi bi-search me-1"></i> Išči avtorje }
+      </button>
+    </div>
+  </div>
+</form>
+}
+
+<!-- Title Search Form (TDF) -->
+@if (searchType === 'titles') {
+<form #titleForm="ngForm" (ngSubmit)="onTitleSearch(titleForm)" class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-8">
+      <label for="keyword" class="form-label">Ključna beseda</label>
+      <input
+        type="text"
+        class="form-control"
+        id="keyword"
+        name="keyword"
+        [(ngModel)]="titleCriteria.keyword"
+        placeholder="npr. Da Vinci Code"
+        required
+        minlength="2"
+        #keyword="ngModel"
+        [disabled]="isLoading"
+        [ngClass]="{ 'is-invalid': keyword.invalid && keyword.touched }"
+      />
+      @if (keyword.invalid && keyword.touched) {
+      <div class="invalid-feedback">
+        @if (keyword.errors?.['required']) { Ključna beseda je obvezna. } @if
+        (keyword.errors?.['minlength']) { Minimalno 2 znaka. }
+      </div>
+      }
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button
+        type="submit"
+        class="btn btn-primary w-100"
+        [disabled]="titleForm.invalid || isLoading"
+      >
+        @if (isLoading) {
+        <span class="spinner-border spinner-border-sm me-1"></span>
+        Iščem... } @else {
+        <i class="bi bi-search me-1"></i> Išči naslove }
+      </button>
+    </div>
+  </div>
+</form>
+}
