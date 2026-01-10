@@ -8,7 +8,7 @@ import { Title } from '../../models/title.model';
 import { LoaderComponent } from '../../components/loader/loader.component';
 import { TitleCardComponent } from '../../components/title-card/title-card.component';
 import { HighlightDirective } from '../../directives/highlight.directive';
-
+// TODO Author id name and surname is not visible on card Nazaj link should lead to last page it was on.
 @Component({
   selector: 'app-author-detail',
   standalone: true,

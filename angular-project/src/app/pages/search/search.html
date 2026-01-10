@@ -1,43 +1,27 @@
 <div class="container mt-4">
-      <h2 class="mb-4">
-        <i class="bi bi-search me-2"></i>Iskanje
-      </h2>
-
-      <!-- Search Type Tabs -->
-      <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="searchType === 'authors'"
-            (click)="switchTab('authors')">
-            <i class="bi bi-search me-1"></i> Iskanje avtorjev
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="searchType === 'titles'"
-            (click)="switchTab('titles')">
-            <i class="bi bi-search me-1"></i> Iskanje naslovov
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="searchType === 'all-authors'"
-            (click)="switchTab('all-authors')">
-            <i class="bi bi-people me-1"></i> Vsi avtorji
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="searchType === 'all-titles'"
-            (click)="switchTab('all-titles')">
-            <i class="bi bi-book me-1"></i> Vsi naslovi
-          </button>
-        </li>
-      </ul>
+      <!-- Dynamic heading based on mode -->
+      @if (searchType === 'authors' || searchType === 'titles') {
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="mb-0">
+            <i class="bi bi-search me-2"></i>Iskanje
+          </h2>
+          <!-- Toggle between author/title search -->
+          <div class="btn-group" role="group">
+            <button type="button" class="btn"
+              [class.btn-primary]="searchType === 'authors'"
+              [class.btn-outline-primary]="searchType !== 'authors'"
+              (click)="switchTab('authors')">
+              <i class="bi bi-people me-1"></i>Avtorji
+            </button>
+            <button type="button" class="btn"
+              [class.btn-primary]="searchType === 'titles'"
+              [class.btn-outline-primary]="searchType !== 'titles'"
+              (click)="switchTab('titles')">
+              <i class="bi bi-book me-1"></i>Naslovi
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- Search Form Component (only show for search tabs) -->
       @if (searchType === 'authors' || searchType === 'titles') {
@@ -145,7 +129,7 @@
           <span class="text-muted small">
             Stran {{ allAuthorsCurrentPage }} od {{ totalAuthorsPages | number }}
             @if (loadedAuthorsPages > 0) {
-              ({{ loadedAuthorsPages }} v predpomnilniku)
+              ({{ loadedAuthorsPages | number }} naloženih)
             }
           </span>
         </div>
@@ -191,7 +175,7 @@
           <span class="text-muted small">
             Stran {{ allTitlesCurrentPage }} od {{ totalTitlesPages | number }}
             @if (loadedTitlesPages > 0) {
-              ({{ loadedTitlesPages }} v predpomnilniku)
+              ({{ loadedTitlesPages | number }} naloženih)
             }
           </span>
         </div>

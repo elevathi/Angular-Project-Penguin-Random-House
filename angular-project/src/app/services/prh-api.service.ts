@@ -118,7 +118,28 @@ export class PrhApiService {
 
   getAuthorById(authorId: string): Observable<Author> {
     const params = new HttpParams().set('api_key', this.apiKey);
-    return this.http.get<Author>(`${this.baseUrl}/authors/${authorId}`, { params });
+    return this.http.get<any>(`${this.baseUrl}/authors/${authorId}`, { params }).pipe(
+      map(response => {
+        // Handle different response structures
+        const data = response.data;
+        if (!data) {
+          throw new Error('No author data in response');
+        }
+        // If data contains an authors array, take the first one
+        if (data.authors && Array.isArray(data.authors)) {
+          return this.mapApiAuthorToModel(data.authors[0]);
+        }
+        // If data contains a single author object
+        if (data.author) {
+          return this.mapApiAuthorToModel(data.author);
+        }
+        // If data has authorId directly (is the author object)
+        if (data.authorId) {
+          return this.mapApiAuthorToModel(data);
+        }
+        throw new Error('Could not parse author response');
+      })
+    );
   }
 
   // Map API v2 title to our model
@@ -195,12 +216,20 @@ export class PrhApiService {
     );
   }
 
-  // Paginated titles with total count
-  getTitlesPaginated(start: number = 0, rows: number = 10): Observable<PaginatedTitlesResponse> {
-    const params = new HttpParams()
+  // Paginated titles with total count (only books by default)
+  getTitlesPaginated(start: number = 0, rows: number = 10, format?: string): Observable<PaginatedTitlesResponse> {
+    let params = new HttpParams()
       .set('start', start.toString())
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
+
+    // Filter by format at API level - use TR (Trade Paperback) as default for books
+    if (format) {
+      params = params.set('format', format);
+    } else {
+      // Default to Trade Paperback to get actual books
+      params = params.set('format', 'TR');
+    }
 
     return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/titles`, { params }).pipe(
       map(response => ({
