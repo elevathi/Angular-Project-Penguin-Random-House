@@ -83,12 +83,10 @@ export class SearchComponent implements OnInit {
               }
             });
 
-            // Sort cache by index position (in case batches arrive out of order)
-            // Already handled by push order
-
-            // If this is the first batch and we're on all-titles, show first page
+            // If this is the first batch and we're on all-titles, update displayed data
             if (start === 0 && this.searchType === 'all-titles') {
               this.allTitlesCurrentPage = 1;
+              this.displayedTitlesPage = this.getTitlesPageFromCache();
             }
           }
         });
@@ -105,24 +103,37 @@ export class SearchComponent implements OnInit {
   private authorsCache: Author[] = [];
   private titlesCache: Title[] = [];
 
-  // Current page items (computed from cache based on dynamic page size)
-  get currentAuthorsPage(): Author[] {
+  // Displayed page data - keeps previous data visible while loading new page
+  displayedAuthorsPage: Author[] = [];
+  displayedTitlesPage: Title[] = [];
+
+  // Get current page from cache (used internally)
+  private getAuthorsPageFromCache(): Author[] {
     const start = (this.allAuthorsCurrentPage - 1) * this.allAuthorsItemsPerPage;
-    return this.authorsCache.slice(start, start + this.allAuthorsItemsPerPage);
+    return this.authorsCache.slice(start, start + this.allAuthorsItemsPerPage).filter(a => a !== null);
+  }
+
+  private getTitlesPageFromCache(): Title[] {
+    const start = (this.allTitlesCurrentPage - 1) * this.allTitlesItemsPerPage;
+    return this.titlesCache.slice(start, start + this.allTitlesItemsPerPage).filter(t => t !== null);
+  }
+
+  // For backwards compatibility - template uses these
+  get currentAuthorsPage(): Author[] {
+    return this.displayedAuthorsPage;
   }
 
   get currentTitlesPage(): Title[] {
-    const start = (this.allTitlesCurrentPage - 1) * this.allTitlesItemsPerPage;
-    return this.titlesCache.slice(start, start + this.allTitlesItemsPerPage);
+    return this.displayedTitlesPage;
   }
 
-  // Number of cached items
+  // Number of actually loaded cached items (excluding null placeholders)
   get loadedAuthorsCount(): number {
-    return this.authorsCache.length;
+    return this.authorsCache.filter(a => a !== null).length;
   }
 
   get loadedTitlesCount(): number {
-    return this.titlesCache.length;
+    return this.titlesCache.filter(t => t !== null).length;
   }
 
   // Pagination for all authors
@@ -213,8 +224,8 @@ export class SearchComponent implements OnInit {
     this.errorMessage = '';
     this.authors = [];
 
-    // Search with up to 50 results for targeted searches
-    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName, 0, 50)
+    // Search using authorLastInitial API filter + client-side name filtering
+    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -267,29 +278,38 @@ export class SearchComponent implements OnInit {
     this.router.navigate(['/title', title.isbn]);
   }
 
-  // Load authors page on-demand with caching
+  // Load authors page - direct API pagination (supports jumping to any page)
   loadAuthorsPage(page: number): void {
     this.allAuthorsCurrentPage = page;
     const startIndex = (page - 1) * this.allAuthorsItemsPerPage;
     const endIndex = startIndex + this.allAuthorsItemsPerPage;
 
-    // Check if we have enough cached items for this page
-    if (this.authorsCache.length >= endIndex ||
-        (this.totalAuthorsCount > 0 && this.authorsCache.length >= this.totalAuthorsCount)) {
-      return; // Data already in cache, getter will slice it
+    // Check if page is fully available in cache
+    const cachedPage = this.getAuthorsPageFromCache();
+    if (cachedPage.length > 0) {
+      this.displayedAuthorsPage = cachedPage;
+      return; // Data in cache, display it immediately
     }
 
-    // Need to load more data
+    // Load directly from API using correct start offset
+    // Keep previous data visible while loading (don't clear displayedAuthorsPage)
     this.isLoadingAuthorsPage = true;
-    const loadFrom = this.authorsCache.length; // Continue from where we left off
 
-    this.prhApiService.getAuthorsPaginated(loadFrom, Math.max(100, this.allAuthorsItemsPerPage))
+    this.prhApiService.getAuthorsPaginated(startIndex, this.allAuthorsItemsPerPage)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          // Append to flat cache
-          this.authorsCache.push(...response.authors);
           this.totalAuthorsCount = response.totalCount;
+          // Store in sparse cache - pad array if needed
+          while (this.authorsCache.length < startIndex) {
+            this.authorsCache.push(null as any); // Placeholder
+          }
+          // Add/replace the loaded authors
+          response.authors.forEach((author, i) => {
+            this.authorsCache[startIndex + i] = author;
+          });
+          // Update displayed data with new page
+          this.displayedAuthorsPage = this.getAuthorsPageFromCache();
           this.isLoadingAuthorsPage = false;
         },
         error: (err) => {
@@ -299,29 +319,38 @@ export class SearchComponent implements OnInit {
       });
   }
 
-  // Load titles page on-demand with caching
+  // Load titles page - direct API pagination (supports jumping to any page)
   loadTitlesPage(page: number): void {
     this.allTitlesCurrentPage = page;
     const startIndex = (page - 1) * this.allTitlesItemsPerPage;
     const endIndex = startIndex + this.allTitlesItemsPerPage;
 
-    // Check if we have enough cached items for this page
-    if (this.titlesCache.length >= endIndex ||
-        (this.totalTitlesCount > 0 && this.titlesCache.length >= this.totalTitlesCount)) {
-      return; // Data already in cache, getter will slice it
+    // Check if page is fully available in cache
+    const cachedPage = this.getTitlesPageFromCache();
+    if (cachedPage.length > 0) {
+      this.displayedTitlesPage = cachedPage;
+      return; // Data in cache, display it immediately
     }
 
-    // Need to load more data
+    // Load directly from API using correct start offset
+    // Keep previous data visible while loading (don't clear displayedTitlesPage)
     this.isLoadingTitlesPage = true;
-    const loadFrom = this.titlesCache.length; // Continue from where we left off
 
-    this.prhApiService.getTitlesPaginated(loadFrom, Math.max(100, this.allTitlesItemsPerPage))
+    this.prhApiService.getTitlesPaginated(startIndex, this.allTitlesItemsPerPage)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          // Append to flat cache
-          this.titlesCache.push(...response.titles);
           this.totalTitlesCount = response.totalCount;
+          // Store in sparse cache - pad array if needed
+          while (this.titlesCache.length < startIndex) {
+            this.titlesCache.push(null as any); // Placeholder
+          }
+          // Add/replace the loaded titles
+          response.titles.forEach((title, i) => {
+            this.titlesCache[startIndex + i] = title;
+          });
+          // Update displayed data with new page
+          this.displayedTitlesPage = this.getTitlesPageFromCache();
           this.isLoadingTitlesPage = false;
         },
         error: (err) => {

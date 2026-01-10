@@ -122,22 +122,23 @@
             @if (isLoadingAuthorsPage) {
               <span class="text-muted small ms-2">
                 <span class="spinner-border spinner-border-sm" role="status"></span>
-                nalagam...
               </span>
             }
           </h5>
           <span class="text-muted small">
             Stran {{ allAuthorsCurrentPage }} od {{ totalAuthorsPages | number }}
-            @if (loadedAuthorsPages > 0) {
-              ({{ loadedAuthorsPages | number }} naloženih)
-            }
           </span>
         </div>
 
-        @if (isLoadingAuthorsPage && currentAuthorsPage.length === 0) {
+        @if (currentAuthorsPage.length === 0 && isLoadingAuthorsPage) {
           <app-loader></app-loader>
+        } @else if (currentAuthorsPage.length === 0 && !isLoadingAuthorsPage) {
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Ni avtorjev za prikaz.
+          </div>
         } @else {
-          <div class="row g-3">
+          <div class="row g-3" [class.opacity-50]="isLoadingAuthorsPage" [style.pointer-events]="isLoadingAuthorsPage ? 'none' : 'auto'">
             @for (author of currentAuthorsPage; track author.authorid) {
               <div class="col-md-6 col-lg-4">
                 <app-author-card
@@ -150,11 +151,13 @@
 
           <!-- Pagination for Authors -->
           @if (totalAuthorsPages > 1) {
-            <app-pagination
-              [currentPage]="allAuthorsCurrentPage"
-              [totalPages]="totalAuthorsPages"
-              (pageChange)="changeAuthorsPage($event)">
-            </app-pagination>
+            <div [class.opacity-50]="isLoadingAuthorsPage" [style.pointer-events]="isLoadingAuthorsPage ? 'none' : 'auto'">
+              <app-pagination
+                [currentPage]="allAuthorsCurrentPage"
+                [totalPages]="totalAuthorsPages"
+                (pageChange)="changeAuthorsPage($event)">
+              </app-pagination>
+            </div>
           }
         }
       }
@@ -168,22 +171,23 @@
             @if (isLoadingTitlesPage) {
               <span class="text-muted small ms-2">
                 <span class="spinner-border spinner-border-sm" role="status"></span>
-                nalagam...
               </span>
             }
           </h5>
           <span class="text-muted small">
             Stran {{ allTitlesCurrentPage }} od {{ totalTitlesPages | number }}
-            @if (loadedTitlesPages > 0) {
-              ({{ loadedTitlesPages | number }} naloženih)
-            }
           </span>
         </div>
 
-        @if (isLoadingTitlesPage && currentTitlesPage.length === 0) {
+        @if (currentTitlesPage.length === 0 && isLoadingTitlesPage) {
           <app-loader></app-loader>
+        } @else if (currentTitlesPage.length === 0 && !isLoadingTitlesPage) {
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Ni naslovov za prikaz.
+          </div>
         } @else {
-          <div class="row g-3">
+          <div class="row g-3" [class.opacity-50]="isLoadingTitlesPage" [style.pointer-events]="isLoadingTitlesPage ? 'none' : 'auto'">
             @for (title of currentTitlesPage; track title.isbn) {
               <div class="col-md-6">
                 <app-title-card
@@ -196,11 +200,13 @@
 
           <!-- Pagination for Titles -->
           @if (totalTitlesPages > 1) {
-            <app-pagination
-              [currentPage]="allTitlesCurrentPage"
-              [totalPages]="totalTitlesPages"
-              (pageChange)="changeTitlesPage($event)">
-            </app-pagination>
+            <div [class.opacity-50]="isLoadingTitlesPage" [style.pointer-events]="isLoadingTitlesPage ? 'none' : 'auto'">
+              <app-pagination
+                [currentPage]="allTitlesCurrentPage"
+                [totalPages]="totalTitlesPages"
+                (pageChange)="changeTitlesPage($event)">
+              </app-pagination>
+            </div>
           }
         }
       }

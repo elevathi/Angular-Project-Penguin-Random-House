@@ -85,19 +85,43 @@ export class PrhApiService {
   }
 
   // AUTHORS
-  searchAuthors(firstName?: string, lastName?: string, start: number = 0, rows: number = 10): Observable<AuthorsResponse> {
+  // Note: PRH API v2 /authors endpoint only supports authorLastInitial filter (first letter)
+  // We fetch authors by initial and filter client-side for full name match
+  searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
     let params = new HttpParams()
-      .set('start', start.toString())
-      .set('rows', rows.toString())
+      .set('start', '0')
+      .set('rows', '200') // Fetch more to filter client-side
       .set('api_key', this.apiKey);
 
-    if (firstName) params = params.set('firstName', firstName);
-    if (lastName) params = params.set('lastName', lastName);
+    // Use authorLastInitial if lastName provided (API's only name filter)
+    if (lastName && lastName.length > 0) {
+      params = params.set('authorLastInitial', lastName.charAt(0).toUpperCase());
+      params = params.set('sort', 'authorLast');
+    }
+
+    const firstNameLower = firstName?.toLowerCase() || '';
+    const lastNameLower = lastName?.toLowerCase() || '';
 
     return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/authors`, { params }).pipe(
-      map(response => ({
-        author: response.data.authors.map(a => this.mapApiAuthorToModel(a))
-      }))
+      map(response => {
+        let authors = response.data.authors.map(a => this.mapApiAuthorToModel(a));
+
+        // Client-side filtering for more precise matching
+        if (lastNameLower) {
+          authors = authors.filter(a =>
+            a.authorlastlc?.startsWith(lastNameLower) ||
+            a.authorlast?.toLowerCase().startsWith(lastNameLower)
+          );
+        }
+        if (firstNameLower) {
+          authors = authors.filter(a =>
+            a.authorfirstlc?.startsWith(firstNameLower) ||
+            a.authorfirst?.toLowerCase().startsWith(firstNameLower)
+          );
+        }
+
+        return { author: authors };
+      })
     );
   }
 
@@ -185,9 +209,9 @@ export class PrhApiService {
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
 
-    // Add keyword search
+    // Use 'title' parameter for precise title search (not 'keyword' which is too broad)
     if (criteria.keyword) {
-      params = params.set('keyword', criteria.keyword);
+      params = params.set('title', criteria.keyword);
     }
 
     // Add author filter

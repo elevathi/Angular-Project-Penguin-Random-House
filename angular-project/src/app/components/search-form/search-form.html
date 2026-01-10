@@ -56,9 +56,9 @@
 @if (searchType === 'titles') {
 <form #titleForm="ngForm" (ngSubmit)="onTitleSearch(titleForm)" class="mb-4">
   <div class="row g-3">
-    <!-- Main keyword search -->
+    <!-- Title search -->
     <div class="col-md-6">
-      <label for="keyword" class="form-label">Ključna beseda</label>
+      <label for="keyword" class="form-label">Naslov</label>
       <input
         type="text"
         class="form-control"
@@ -74,7 +74,7 @@
       />
       @if (keyword.invalid && keyword.touched) {
       <div class="invalid-feedback">
-        @if (keyword.errors?.['required']) { Ključna beseda je obvezna. } @if
+        @if (keyword.errors?.['required']) { Naslov je obvezen. } @if
         (keyword.errors?.['minlength']) { Minimalno 2 znaka. }
       </div>
       }
