@@ -9,6 +9,10 @@ export interface AuthorSearchCriteria {
 
 export interface TitleSearchCriteria {
   keyword: string;
+  title?: string;        // Search specifically by title
+  author?: string;       // Filter by author name
+  format?: string;       // Format code filter (e.g., 'HC' for hardcover, 'TR' for paperback)
+  excludeNonBooks?: boolean;  // Exclude non-book items like mugs, puzzles
 }
 
 @Component({
@@ -33,8 +37,21 @@ export class SearchFormComponent {
   };
 
   titleCriteria: TitleSearchCriteria = {
-    keyword: ''
+    keyword: '',
+    title: '',
+    author: '',
+    format: '',
+    excludeNonBooks: true  // Default: exclude mugs, puzzles, etc.
   };
+
+  // Common book format codes
+  formatOptions = [
+    { code: '', label: 'Vsi formati' },
+    { code: 'HC', label: 'Trda vezava' },
+    { code: 'TR', label: 'Mehka vezava' },
+    { code: 'EL', label: 'E-knjiga' },
+    { code: 'AU', label: 'Avdio knjiga' }
+  ];
 
   onAuthorSearch(form: any): void {
     if (form.valid) {
@@ -51,6 +68,6 @@ export class SearchFormComponent {
   // Public method to reset forms (can be called from parent)
   resetForms(): void {
     this.authorCriteria = { firstName: '', lastName: '' };
-    this.titleCriteria = { keyword: '' };
+    this.titleCriteria = { keyword: '', title: '', author: '', format: '', excludeNonBooks: true };
   }
 }

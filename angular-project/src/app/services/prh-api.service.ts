@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 import { Author, AuthorsResponse } from '../models/author.model';
 import { Title, TitlesResponse } from '../models/title.model';
 import { environment } from '../../environments/environment';
+import { TitleSearchCriteria } from '../components/search-form/search-form.component';
 
 // API v2 response interfaces
 interface ApiV2Author {
@@ -149,18 +150,48 @@ export class PrhApiService {
     };
   }
 
+  // Non-book format codes to exclude
+  private static readonly NON_BOOK_FORMATS = [
+    'MU', 'PZ', 'CA', 'GA', 'GI', 'PO', 'ST', 'WL', 'NT', 'CL', 'BX', 'KT'
+    // MU=Mug, PZ=Puzzle, CA=Calendar, GA=Game, GI=Gift, PO=Poster,
+    // ST=Stationery, WL=Wall, NT=Notebook, CL=Cloth, BX=Box, KT=Kit
+  ];
+
   // TITLES
-  searchTitles(keyword: string, start: number = 0, rows: number = 10): Observable<TitlesResponse> {
-    const params = new HttpParams()
+  searchTitles(criteria: TitleSearchCriteria, start: number = 0, rows: number = 50): Observable<TitlesResponse> {
+    let params = new HttpParams()
       .set('start', start.toString())
       .set('rows', rows.toString())
-      .set('keyword', keyword)
       .set('api_key', this.apiKey);
 
+    // Add keyword search
+    if (criteria.keyword) {
+      params = params.set('keyword', criteria.keyword);
+    }
+
+    // Add author filter
+    if (criteria.author) {
+      params = params.set('author', criteria.author);
+    }
+
+    // Add format filter
+    if (criteria.format) {
+      params = params.set('format', criteria.format);
+    }
+
     return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/titles`, { params }).pipe(
-      map(response => ({
-        title: response.data.titles.map(t => this.mapApiTitleToModel(t))
-      }))
+      map(response => {
+        let titles = response.data.titles.map(t => this.mapApiTitleToModel(t));
+
+        // Filter out non-book items if requested
+        if (criteria.excludeNonBooks) {
+          titles = titles.filter(t =>
+            !PrhApiService.NON_BOOK_FORMATS.includes(t.formatcode?.toUpperCase() || '')
+          );
+        }
+
+        return { title: titles };
+      })
     );
   }
 

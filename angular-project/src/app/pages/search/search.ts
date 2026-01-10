@@ -149,8 +149,8 @@ export class SearchComponent implements OnInit {
     this.errorMessage = '';
     this.titles = [];
 
-    // Search with up to 50 results for targeted searches
-    this.prhApiService.searchTitles(criteria.keyword, 0, 50)
+    // Search with full criteria including filters
+    this.prhApiService.searchTitles(criteria, 0, 100)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
