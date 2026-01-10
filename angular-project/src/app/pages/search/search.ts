@@ -193,6 +193,10 @@ export class SearchComponent implements OnInit {
   hasSearched = false;
   errorMessage = '';
 
+  // I'm feeling lucky feature
+  luckyTitle: Title | null = null;
+  isLoadingLucky = false;
+
   switchTab(type: 'authors' | 'titles' | 'all-authors' | 'all-titles'): void {
     this.searchType = type;
     this.clearResults();
@@ -216,6 +220,41 @@ export class SearchComponent implements OnInit {
     this.errorMessage = '';
     this.searchAuthorsCurrentPage = 1;
     this.searchTitlesCurrentPage = 1;
+  }
+
+  // I'm feeling lucky - fetch random book
+  feelingLucky(): void {
+    this.isLoadingLucky = true;
+    this.luckyTitle = null;
+
+    // Use total count if available, otherwise estimate
+    const maxOffset = this.totalTitlesCount > 0 ? this.totalTitlesCount - 1 : 10000;
+    const randomOffset = Math.floor(Math.random() * maxOffset);
+
+    this.prhApiService.getTitlesPaginated(randomOffset, 1)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.titles.length > 0) {
+            this.luckyTitle = response.titles[0];
+          }
+          this.isLoadingLucky = false;
+        },
+        error: (err) => {
+          console.error('Lucky fetch error:', err);
+          this.isLoadingLucky = false;
+        }
+      });
+  }
+
+  viewLuckyTitle(): void {
+    if (this.luckyTitle) {
+      this.router.navigate(['/title', this.luckyTitle.isbn]);
+    }
+  }
+
+  dismissLucky(): void {
+    this.luckyTitle = null;
   }
 
   // Handle event from child component (Output)
