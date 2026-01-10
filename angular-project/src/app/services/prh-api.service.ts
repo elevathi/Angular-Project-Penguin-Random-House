@@ -15,6 +15,7 @@ interface ApiV2Author {
 }
 
 interface ApiV2AuthorsResponse {
+  recordCount: number;
   data: {
     authors: ApiV2Author[];
   };
@@ -32,9 +33,21 @@ interface ApiV2Title {
 }
 
 interface ApiV2TitlesResponse {
+  recordCount: number;
   data: {
     titles: ApiV2Title[];
   };
+}
+
+// Response types with pagination info
+export interface PaginatedAuthorsResponse {
+  authors: Author[];
+  totalCount: number;
+}
+
+export interface PaginatedTitlesResponse {
+  titles: Title[];
+  totalCount: number;
 }
 
 @Injectable({
@@ -87,6 +100,21 @@ export class PrhApiService {
     );
   }
 
+  // Paginated authors with total count
+  getAuthorsPaginated(start: number = 0, rows: number = 10): Observable<PaginatedAuthorsResponse> {
+    const params = new HttpParams()
+      .set('start', start.toString())
+      .set('rows', rows.toString())
+      .set('api_key', this.apiKey);
+
+    return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/authors`, { params }).pipe(
+      map(response => ({
+        authors: response.data.authors.map(a => this.mapApiAuthorToModel(a)),
+        totalCount: response.recordCount
+      }))
+    );
+  }
+
   getAuthorById(authorId: string): Observable<Author> {
     const params = new HttpParams().set('api_key', this.apiKey);
     return this.http.get<Author>(`${this.baseUrl}/authors/${authorId}`, { params });
@@ -94,25 +122,30 @@ export class PrhApiService {
 
   // Map API v2 title to our model
   private mapApiTitleToModel(apiTitle: ApiV2Title): Title {
+    if (!apiTitle) {
+      throw new Error('Invalid title data received from API');
+    }
+
     const usdPrice = apiTitle.price?.find(p => p.currencyCode === 'USD')?.amount;
     const priceusa = usdPrice ? usdPrice.toString() : undefined;
     const priceeur = priceusa ? PrhApiService.convertUsdToEur(priceusa) : undefined;
+    const isbn = apiTitle.isbn?.toString() || '';
 
     return {
-      isbn: apiTitle.isbn.toString(),
+      isbn,
       isbn10: '', // v2 API doesn't provide ISBN-10 in list view
-      titleweb: apiTitle.title,
-      titleshort: apiTitle.title,
-      authorweb: apiTitle.author,
-      author: apiTitle.author,
+      titleweb: apiTitle.title || '',
+      titleshort: apiTitle.title || '',
+      authorweb: apiTitle.author || '',
+      author: apiTitle.author || '',
       formatname: apiTitle.format?.description || '',
       formatcode: apiTitle.format?.code || '',
       priceusa,
       priceeur,
-      pricecanada: apiTitle.price?.find(p => p.currencyCode === 'CAD')?.amount.toString(),
+      pricecanada: apiTitle.price?.find(p => p.currencyCode === 'CAD')?.amount?.toString(),
       pages: apiTitle.pages?.toString(),
       onsaledate: apiTitle.onsale,
-      workid: apiTitle.isbn.toString() // Using ISBN as workId fallback
+      workid: isbn // Using ISBN as workId fallback
     };
   }
 
@@ -131,10 +164,41 @@ export class PrhApiService {
     );
   }
 
+  // Paginated titles with total count
+  getTitlesPaginated(start: number = 0, rows: number = 10): Observable<PaginatedTitlesResponse> {
+    const params = new HttpParams()
+      .set('start', start.toString())
+      .set('rows', rows.toString())
+      .set('api_key', this.apiKey);
+
+    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/titles`, { params }).pipe(
+      map(response => ({
+        titles: response.data.titles.map(t => this.mapApiTitleToModel(t)),
+        totalCount: response.recordCount
+      }))
+    );
+  }
+
   getTitleByIsbn(isbn: string): Observable<Title> {
     const params = new HttpParams().set('api_key', this.apiKey);
     return this.http.get<any>(`${this.baseUrl}/titles/${isbn}`, { params }).pipe(
-      map(response => this.mapApiTitleToModel(response.data))
+      map(response => {
+        // Handle different response structures
+        const data = response.data;
+        if (!data) {
+          throw new Error('No title data in response');
+        }
+        // If data contains a titles array, take the first one
+        if (data.titles && Array.isArray(data.titles)) {
+          return this.mapApiTitleToModel(data.titles[0]);
+        }
+        // If data contains a single title object
+        if (data.title) {
+          return this.mapApiTitleToModel(data.title);
+        }
+        // Assume data is the title object itself
+        return this.mapApiTitleToModel(data);
+      })
     );
   }
 

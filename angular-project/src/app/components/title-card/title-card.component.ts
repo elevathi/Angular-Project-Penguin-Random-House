@@ -14,6 +14,9 @@ export class TitleCardComponent {
   @Input({ required: true }) title!: Title;
   @Output() titleSelected = new EventEmitter<Title>();
 
+  // Local SVG placeholder (no external dependency)
+  private readonly placeholderImage = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='180' viewBox='0 0 120 180'%3E%3Crect fill='%23e9ecef' width='120' height='180'/%3E%3Ctext x='50%25' y='45%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-family='sans-serif' font-size='12'%3ENo%3C/text%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-family='sans-serif' font-size='12'%3ECover%3C/text%3E%3C/svg%3E`;
+
   constructor(private prhApiService: PrhApiService) {}
 
   getCoverUrl(): string {
@@ -21,7 +24,7 @@ export class TitleCardComponent {
   }
 
   onImageError(event: Event): void {
-    (event.target as HTMLImageElement).src = 'https://via.placeholder.com/120x180?text=No+Cover';
+    (event.target as HTMLImageElement).src = this.placeholderImage;
   }
 
   onTitleClick(): void {

@@ -21,6 +21,9 @@ export class TitleDetailComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
 
+  // Local SVG placeholder (no external dependency)
+  private readonly placeholderImage = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'%3E%3Crect fill='%23e9ecef' width='200' height='300'/%3E%3Ctext x='50%25' y='45%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-family='sans-serif' font-size='16'%3ENo%3C/text%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%236c757d' font-family='sans-serif' font-size='16'%3ECover%3C/text%3E%3C/svg%3E`;
+
   ngOnInit(): void {
     const isbn = this.route.snapshot.paramMap.get('isbn');
     if (isbn) {
@@ -50,7 +53,7 @@ export class TitleDetailComponent implements OnInit {
   }
 
   onImageError(event: Event): void {
-    (event.target as HTMLImageElement).src = 'https://via.placeholder.com/200x300?text=No+Cover';
+    (event.target as HTMLImageElement).src = this.placeholderImage;
   }
 
   goBack(): void {

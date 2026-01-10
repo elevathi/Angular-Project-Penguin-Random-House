@@ -131,37 +131,30 @@
 
       <!-- All Authors Tab -->
       @if (searchType === 'all-authors') {
-        @if (isLoadingAll) {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">
+            <i class="bi bi-people-fill text-primary me-2"></i>
+            Vsi avtorji ({{ totalAuthorsCount | number }})
+            @if (isLoadingAuthorsPage) {
+              <span class="text-muted small ms-2">
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                nalagam...
+              </span>
+            }
+          </h5>
+          <span class="text-muted small">
+            Stran {{ allAuthorsCurrentPage }} od {{ totalAuthorsPages | number }}
+            @if (loadedAuthorsPages > 0) {
+              ({{ loadedAuthorsPages }} v predpomnilniku)
+            }
+          </span>
+        </div>
+
+        @if (isLoadingAuthorsPage && currentAuthorsPage.length === 0) {
           <app-loader></app-loader>
         } @else {
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">
-              <i class="bi bi-people-fill text-primary me-2"></i>
-              Vsi avtorji ({{ allAuthors.length }})
-            </h5>
-            <div class="btn-group" role="group">
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="authorsSortBy === 'firstName'"
-                [class.btn-outline-primary]="authorsSortBy !== 'firstName'"
-                (click)="changeAuthorsSort('firstName')">
-                <i class="bi" [ngClass]="getAuthorSortIcon('firstName')"></i>
-                Ime
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="authorsSortBy === 'lastName'"
-                [class.btn-outline-primary]="authorsSortBy !== 'lastName'"
-                (click)="changeAuthorsSort('lastName')">
-                <i class="bi" [ngClass]="getAuthorSortIcon('lastName')"></i>
-                Priimek
-              </button>
-            </div>
-          </div>
           <div class="row g-3">
-            @for (author of paginatedAuthors; track author.authorid) {
+            @for (author of currentAuthorsPage; track author.authorid) {
               <div class="col-md-6 col-lg-4">
                 <app-author-card
                   [author]="author"
@@ -172,65 +165,42 @@
           </div>
 
           <!-- Pagination for Authors -->
-          <app-pagination
-            [currentPage]="allAuthorsCurrentPage"
-            [totalPages]="totalAuthorsPages"
-            (pageChange)="changeAuthorsPage($event)">
-          </app-pagination>
+          @if (totalAuthorsPages > 1) {
+            <app-pagination
+              [currentPage]="allAuthorsCurrentPage"
+              [totalPages]="totalAuthorsPages"
+              (pageChange)="changeAuthorsPage($event)">
+            </app-pagination>
+          }
         }
       }
 
       <!-- All Titles Tab -->
       @if (searchType === 'all-titles') {
-        @if (isLoadingAll) {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">
+            <i class="bi bi-book-fill text-primary me-2"></i>
+            Vsi naslovi ({{ totalTitlesCount | number }})
+            @if (isLoadingTitlesPage) {
+              <span class="text-muted small ms-2">
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                nalagam...
+              </span>
+            }
+          </h5>
+          <span class="text-muted small">
+            Stran {{ allTitlesCurrentPage }} od {{ totalTitlesPages | number }}
+            @if (loadedTitlesPages > 0) {
+              ({{ loadedTitlesPages }} v predpomnilniku)
+            }
+          </span>
+        </div>
+
+        @if (isLoadingTitlesPage && currentTitlesPage.length === 0) {
           <app-loader></app-loader>
         } @else {
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">
-              <i class="bi bi-book-fill text-primary me-2"></i>
-              Vsi naslovi ({{ allTitles.length }})
-            </h5>
-            <div class="btn-group" role="group">
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="titlesSortBy === 'title'"
-                [class.btn-outline-primary]="titlesSortBy !== 'title'"
-                (click)="changeTitlesSort('title')">
-                <i class="bi" [ngClass]="getTitleSortIcon('title')"></i>
-                Naslov
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="titlesSortBy === 'author'"
-                [class.btn-outline-primary]="titlesSortBy !== 'author'"
-                (click)="changeTitlesSort('author')">
-                <i class="bi" [ngClass]="getTitleSortIcon('author')"></i>
-                Avtor
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="titlesSortBy === 'price'"
-                [class.btn-outline-primary]="titlesSortBy !== 'price'"
-                (click)="changeTitlesSort('price')">
-                <i class="bi" [ngClass]="getTitleSortIcon('price')"></i>
-                Cena
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm"
-                [class.btn-primary]="titlesSortBy === 'date'"
-                [class.btn-outline-primary]="titlesSortBy !== 'date'"
-                (click)="changeTitlesSort('date')">
-                <i class="bi" [ngClass]="getTitleSortIcon('date')"></i>
-                Datum
-              </button>
-            </div>
-          </div>
           <div class="row g-3">
-            @for (title of paginatedTitles; track title.isbn) {
+            @for (title of currentTitlesPage; track title.isbn) {
               <div class="col-md-6">
                 <app-title-card
                   [title]="title"
@@ -241,11 +211,13 @@
           </div>
 
           <!-- Pagination for Titles -->
-          <app-pagination
-            [currentPage]="allTitlesCurrentPage"
-            [totalPages]="totalTitlesPages"
-            (pageChange)="changeTitlesPage($event)">
-          </app-pagination>
+          @if (totalTitlesPages > 1) {
+            <app-pagination
+              [currentPage]="allTitlesCurrentPage"
+              [totalPages]="totalTitlesPages"
+              (pageChange)="changeTitlesPage($event)">
+            </app-pagination>
+          }
         }
       }
 

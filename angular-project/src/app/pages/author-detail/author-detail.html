@@ -56,12 +56,12 @@
                 </table>
 
                 <!-- Spotlight / Bio -->
-                @if (author.spotlight) {
+                @if (sanitizedSpotlight) {
                   <div class="mt-4">
                     <h5>O avtorju</h5>
-                    <div 
+                    <div
                       class="p-3 bg-light rounded"
-                      [innerHTML]="author.spotlight"
+                      [innerHTML]="sanitizedSpotlight"
                       appHighlight="#f8f9fa">
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PrhApiService } from '../../services/prh-api.service';
 import { Author } from '../../models/author.model';
 import { Title } from '../../models/title.model';
@@ -19,8 +20,10 @@ export class AuthorDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private prhApiService = inject(PrhApiService);
+  private sanitizer = inject(DomSanitizer);
 
   author: Author | null = null;
+  sanitizedSpotlight: SafeHtml | null = null;
   authorTitles: Title[] = [];
   
   isLoading = false;
@@ -41,6 +44,10 @@ export class AuthorDetailComponent implements OnInit {
     this.prhApiService.getAuthorById(authorId).subscribe({
       next: (author) => {
         this.author = author;
+        // Sanitize HTML content to prevent XSS
+        if (author.spotlight) {
+          this.sanitizedSpotlight = this.sanitizer.bypassSecurityTrustHtml(author.spotlight);
+        }
         this.isLoading = false;
         this.loadAuthorTitles(authorId);
       },

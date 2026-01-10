@@ -7,7 +7,8 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(ng serve:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

@@ -1,6 +1,7 @@
-import { Component, inject, ViewChild, OnInit } from '@angular/core';
+import { Component, inject, ViewChild, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PrhApiService } from '../../services/prh-api.service';
 import { Author } from '../../models/author.model';
 import { Title } from '../../models/title.model';
@@ -25,7 +26,8 @@ import {
     LoaderComponent,
     PaginationComponent,
   ],
-  templateUrl: './search.html'
+  templateUrl: './search.html',
+  styleUrl: './search.css'
 })
 export class SearchComponent implements OnInit {
   @ViewChild('searchForm') searchFormComponent!: SearchFormComponent;
@@ -33,29 +35,40 @@ export class SearchComponent implements OnInit {
   private prhApiService = inject(PrhApiService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   searchType: 'authors' | 'titles' | 'all-authors' | 'all-titles' = 'authors';
 
   ngOnInit(): void {
     // Check for query parameter to set initial tab
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       if (params['type'] === 'authors' || params['type'] === 'titles' ||
           params['type'] === 'all-authors' || params['type'] === 'all-titles') {
         this.searchType = params['type'];
       }
 
-      // Lazy load data only for the active tab
-      if (this.searchType === 'all-authors' && this.allAuthors.length === 0) {
-        this.loadAllAuthors();
-      } else if (this.searchType === 'all-titles' && this.allTitles.length === 0) {
-        this.loadAllTitles();
+      // Load first page for browse tabs
+      if (this.searchType === 'all-authors' && !this.authorsPageCache.has(1)) {
+        this.loadAuthorsPage(1);
+      } else if (this.searchType === 'all-titles' && !this.titlesPageCache.has(1)) {
+        this.loadTitlesPage(1);
       }
     });
   }
 
-  allAuthors: Author[] = [];
-  allTitles: Title[] = [];
-  isLoadingAll = false;
+  // Browse tabs - on-demand page loading with cache
+  isLoadingAuthorsPage = false;
+  isLoadingTitlesPage = false;
+  totalAuthorsCount = 0;  // Total available from API
+  totalTitlesCount = 0;   // Total available from API
+
+  // Page caches: Map<pageNumber, items[]>
+  private authorsPageCache = new Map<number, Author[]>();
+  private titlesPageCache = new Map<number, Title[]>();
+
+  // Current page items (for display)
+  currentAuthorsPage: Author[] = [];
+  currentTitlesPage: Title[] = [];
 
   // Pagination for all authors
   allAuthorsCurrentPage = 1;
@@ -71,18 +84,7 @@ export class SearchComponent implements OnInit {
   searchTitlesCurrentPage = 1;
   searchTitlesItemsPerPage = 6;
 
-  // Sorting for authors
-  authorsSortBy: 'firstName' | 'lastName' = 'lastName';
-  authorsSortOrder: 'asc' | 'desc' = 'asc';
-
-  // Sorting for titles
-  titlesSortBy: 'title' | 'author' | 'price' | 'date' = 'title';
-  titlesSortOrder: 'asc' | 'desc' = 'asc';
-
-  // Cached sorted results
-  private _cachedSortedAuthors: Author[] | null = null;
-  private _cachedSortedTitles: Title[] | null = null;
-
+  // Search results (not paginated from API)
   authors: Author[] = [];
   titles: Title[] = [];
 
@@ -98,11 +100,11 @@ export class SearchComponent implements OnInit {
       this.searchFormComponent.resetForms();
     }
 
-    // Lazy load data only when switching to browse tabs
-    if (type === 'all-authors' && this.allAuthors.length === 0) {
-      this.loadAllAuthors();
-    } else if (type === 'all-titles' && this.allTitles.length === 0) {
-      this.loadAllTitles();
+    // Load first page when switching to browse tabs (if not cached)
+    if (type === 'all-authors' && !this.authorsPageCache.has(1)) {
+      this.loadAuthorsPage(1);
+    } else if (type === 'all-titles' && !this.titlesPageCache.has(1)) {
+      this.loadTitlesPage(1);
     }
   }
 
@@ -122,21 +124,23 @@ export class SearchComponent implements OnInit {
     this.authors = [];
 
     // Search with up to 50 results for targeted searches
-    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName, 0, 50).subscribe({
-      next: (response) => {
-        if (response.author) {
-          this.authors = Array.isArray(response.author) ? response.author : [response.author];
-        }
-        this.hasSearched = true;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Search error:', err);
-        this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
-        this.isLoading = false;
-        this.hasSearched = true;
-      },
-    });
+    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName, 0, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.author) {
+            this.authors = Array.isArray(response.author) ? response.author : [response.author];
+          }
+          this.hasSearched = true;
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Search error:', err);
+          this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
+          this.isLoading = false;
+          this.hasSearched = true;
+        },
+      });
   }
 
   // Handle event from child component (Output)
@@ -146,21 +150,23 @@ export class SearchComponent implements OnInit {
     this.titles = [];
 
     // Search with up to 50 results for targeted searches
-    this.prhApiService.searchTitles(criteria.keyword, 0, 50).subscribe({
-      next: (response) => {
-        if (response.title) {
-          this.titles = Array.isArray(response.title) ? response.title : [response.title];
-        }
-        this.hasSearched = true;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Search error:', err);
-        this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
-        this.isLoading = false;
-        this.hasSearched = true;
-      },
-    });
+    this.prhApiService.searchTitles(criteria.keyword, 0, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (response.title) {
+            this.titles = Array.isArray(response.title) ? response.title : [response.title];
+          }
+          this.hasSearched = true;
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('Search error:', err);
+          this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
+          this.isLoading = false;
+          this.hasSearched = true;
+        },
+      });
   }
 
   onAuthorSelected(author: Author): void {
@@ -171,227 +177,91 @@ export class SearchComponent implements OnInit {
     this.router.navigate(['/title', title.isbn]);
   }
 
-  // Load all authors for browse tab - progressive loading
-  loadAllAuthors(): void {
-    this.isLoadingAll = true;
-
-    // Load first page immediately (10 items)
-    this.prhApiService.searchAuthors(undefined, undefined, 0, 10).subscribe({
-      next: (response) => {
-        if (response.author) {
-          this.allAuthors = Array.isArray(response.author) ? response.author : [response.author];
-          this._cachedSortedAuthors = null;
-        }
-        this.isLoadingAll = false;
-
-        // Load additional pages in background
-        this.loadAuthorsInBackground(10);
-      },
-      error: (err) => {
-        console.error('Error loading all authors:', err);
-        this.isLoadingAll = false;
-      }
-    });
-  }
-
-  // Load additional author pages in background
-  private loadAuthorsInBackground(startIndex: number): void {
-    const pageSize = 50;
-    const maxAuthors = 1000; // Load up to 1000 authors
-
-    if (startIndex >= maxAuthors) return;
-
-    this.prhApiService.searchAuthors(undefined, undefined, startIndex, pageSize).subscribe({
-      next: (response) => {
-        if (response.author) {
-          const newAuthors = Array.isArray(response.author) ? response.author : [response.author];
-          this.allAuthors = [...this.allAuthors, ...newAuthors];
-          this._cachedSortedAuthors = null;
-
-          // Continue loading if we got results
-          if (newAuthors.length === pageSize) {
-            this.loadAuthorsInBackground(startIndex + pageSize);
-          }
-        }
-      },
-      error: (err) => {
-        console.error('Error loading background authors:', err);
-      }
-    });
-  }
-
-  // Load all titles for browse tab - progressive loading
-  loadAllTitles(): void {
-    this.isLoadingAll = true;
-
-    // Load first page immediately (10 items)
-    this.prhApiService.searchTitles('', 0, 10).subscribe({
-      next: (response) => {
-        if (response.title) {
-          this.allTitles = Array.isArray(response.title) ? response.title : [response.title];
-          this._cachedSortedTitles = null;
-        }
-        this.isLoadingAll = false;
-
-        // Load additional pages in background
-        this.loadTitlesInBackground(10);
-      },
-      error: (err) => {
-        console.error('Error loading all titles:', err);
-        this.isLoadingAll = false;
-      }
-    });
-  }
-
-  // Load additional title pages in background
-  private loadTitlesInBackground(startIndex: number): void {
-    const pageSize = 50;
-    const maxTitles = 1000; // Load up to 1000 titles
-
-    if (startIndex >= maxTitles) return;
-
-    this.prhApiService.searchTitles('', startIndex, pageSize).subscribe({
-      next: (response) => {
-        if (response.title) {
-          const newTitles = Array.isArray(response.title) ? response.title : [response.title];
-          this.allTitles = [...this.allTitles, ...newTitles];
-          this._cachedSortedTitles = null;
-
-          // Continue loading if we got results
-          if (newTitles.length === pageSize) {
-            this.loadTitlesInBackground(startIndex + pageSize);
-          }
-        }
-      },
-      error: (err) => {
-        console.error('Error loading background titles:', err);
-      }
-    });
-  }
-
-  // Sorting methods
-  private sortAuthors(authors: Author[]): Author[] {
-    const sorted = [...authors];
-    sorted.sort((a, b) => {
-      let compareA: string;
-      let compareB: string;
-
-      if (this.authorsSortBy === 'firstName') {
-        compareA = (a.authorfirst || '').toLowerCase();
-        compareB = (b.authorfirst || '').toLowerCase();
-      } else {
-        compareA = (a.authorlast || '').toLowerCase();
-        compareB = (b.authorlast || '').toLowerCase();
-      }
-
-      if (compareA < compareB) return this.authorsSortOrder === 'asc' ? -1 : 1;
-      if (compareA > compareB) return this.authorsSortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }
-
-  private sortTitles(titles: Title[]): Title[] {
-    const sorted = [...titles];
-    sorted.sort((a, b) => {
-      let compareA: any;
-      let compareB: any;
-
-      switch (this.titlesSortBy) {
-        case 'title':
-          compareA = (a.titleweb || '').toLowerCase();
-          compareB = (b.titleweb || '').toLowerCase();
-          break;
-        case 'author':
-          compareA = (a.authorweb || '').toLowerCase();
-          compareB = (b.authorweb || '').toLowerCase();
-          break;
-        case 'price':
-          compareA = parseFloat(a.priceusa || '0');
-          compareB = parseFloat(b.priceusa || '0');
-          break;
-        case 'date':
-          compareA = new Date(a.onsaledate || '1900-01-01').getTime();
-          compareB = new Date(b.onsaledate || '1900-01-01').getTime();
-          break;
-      }
-
-      if (compareA < compareB) return this.titlesSortOrder === 'asc' ? -1 : 1;
-      if (compareA > compareB) return this.titlesSortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }
-
-  changeAuthorsSort(sortBy: 'firstName' | 'lastName'): void {
-    if (this.authorsSortBy === sortBy) {
-      this.authorsSortOrder = this.authorsSortOrder === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.authorsSortBy = sortBy;
-      this.authorsSortOrder = 'asc';
+  // Load authors page on-demand with caching
+  loadAuthorsPage(page: number): void {
+    // Check cache first
+    if (this.authorsPageCache.has(page)) {
+      this.currentAuthorsPage = this.authorsPageCache.get(page)!;
+      this.allAuthorsCurrentPage = page;
+      return;
     }
-    // Invalidate cache when sort changes
-    this._cachedSortedAuthors = null;
-    this.allAuthorsCurrentPage = 1;
+
+    this.isLoadingAuthorsPage = true;
+    const start = (page - 1) * this.allAuthorsItemsPerPage;
+
+    this.prhApiService.getAuthorsPaginated(start, this.allAuthorsItemsPerPage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.authorsPageCache.set(page, response.authors);
+          this.currentAuthorsPage = response.authors;
+          this.totalAuthorsCount = response.totalCount;
+          this.allAuthorsCurrentPage = page;
+          this.isLoadingAuthorsPage = false;
+        },
+        error: (err) => {
+          console.error('Error loading authors page:', err);
+          this.isLoadingAuthorsPage = false;
+        }
+      });
   }
 
-  changeTitlesSort(sortBy: 'title' | 'author' | 'price' | 'date'): void {
-    if (this.titlesSortBy === sortBy) {
-      this.titlesSortOrder = this.titlesSortOrder === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.titlesSortBy = sortBy;
-      this.titlesSortOrder = 'asc';
+  // Load titles page on-demand with caching
+  loadTitlesPage(page: number): void {
+    // Check cache first
+    if (this.titlesPageCache.has(page)) {
+      this.currentTitlesPage = this.titlesPageCache.get(page)!;
+      this.allTitlesCurrentPage = page;
+      return;
     }
-    // Invalidate cache when sort changes
-    this._cachedSortedTitles = null;
-    this.allTitlesCurrentPage = 1;
+
+    this.isLoadingTitlesPage = true;
+    const start = (page - 1) * this.allTitlesItemsPerPage;
+
+    this.prhApiService.getTitlesPaginated(start, this.allTitlesItemsPerPage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.titlesPageCache.set(page, response.titles);
+          this.currentTitlesPage = response.titles;
+          this.totalTitlesCount = response.totalCount;
+          this.allTitlesCurrentPage = page;
+          this.isLoadingTitlesPage = false;
+        },
+        error: (err) => {
+          console.error('Error loading titles page:', err);
+          this.isLoadingTitlesPage = false;
+        }
+      });
   }
 
-  // Pagination getters and methods for browse tabs
-  get paginatedAuthors(): Author[] {
-    const sorted = this.sortedAuthors;
-    const start = (this.allAuthorsCurrentPage - 1) * this.allAuthorsItemsPerPage;
-    const end = start + this.allAuthorsItemsPerPage;
-    return sorted.slice(start, end);
-  }
-
-  get paginatedTitles(): Title[] {
-    const sorted = this.sortedTitles;
-    const start = (this.allTitlesCurrentPage - 1) * this.allTitlesItemsPerPage;
-    const end = start + this.allTitlesItemsPerPage;
-    return sorted.slice(start, end);
-  }
-
-  get sortedAuthors(): Author[] {
-    if (!this._cachedSortedAuthors) {
-      this._cachedSortedAuthors = this.sortAuthors(this.allAuthors);
-    }
-    return this._cachedSortedAuthors;
-  }
-
-  get sortedTitles(): Title[] {
-    if (!this._cachedSortedTitles) {
-      this._cachedSortedTitles = this.sortTitles(this.allTitles);
-    }
-    return this._cachedSortedTitles;
-  }
-
+  // Pagination totals from API
   get totalAuthorsPages(): number {
-    return Math.ceil(this.sortedAuthors.length / this.allAuthorsItemsPerPage);
+    return Math.ceil(this.totalAuthorsCount / this.allAuthorsItemsPerPage);
   }
 
   get totalTitlesPages(): number {
-    return Math.ceil(this.sortedTitles.length / this.allTitlesItemsPerPage);
+    return Math.ceil(this.totalTitlesCount / this.allTitlesItemsPerPage);
   }
 
+  // Change page handlers - load on demand
   changeAuthorsPage(page: number): void {
-    this.allAuthorsCurrentPage = page;
+    this.loadAuthorsPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   changeTitlesPage(page: number): void {
-    this.allTitlesCurrentPage = page;
+    this.loadTitlesPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Get loaded pages count for display
+  get loadedAuthorsPages(): number {
+    return this.authorsPageCache.size;
+  }
+
+  get loadedTitlesPages(): number {
+    return this.titlesPageCache.size;
   }
 
   // Pagination getters and methods for search results
@@ -423,27 +293,6 @@ export class SearchComponent implements OnInit {
   changeSearchTitlesPage(page: number): void {
     this.searchTitlesCurrentPage = page;
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // Helper methods for template
-  getAuthorSortIcon(sortType: 'firstName' | 'lastName'): string {
-    if (this.authorsSortBy !== sortType) return 'bi-sort-alpha-down';
-    return this.authorsSortOrder === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up';
-  }
-
-  getTitleSortIcon(sortType: 'title' | 'author' | 'price' | 'date'): string {
-    if (this.titlesSortBy !== sortType) {
-      return sortType === 'price' ? 'bi-sort-numeric-down' :
-             sortType === 'date' ? 'bi-sort-down' : 'bi-sort-alpha-down';
-    }
-
-    if (sortType === 'price') {
-      return this.titlesSortOrder === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up';
-    } else if (sortType === 'date') {
-      return this.titlesSortOrder === 'asc' ? 'bi-sort-down' : 'bi-sort-up';
-    } else {
-      return this.titlesSortOrder === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up';
-    }
   }
 }
 
