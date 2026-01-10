@@ -50,10 +50,10 @@ export class SearchComponent implements OnInit {
         this.searchType = params['type'];
       }
 
-      // Load first page for browse tabs
-      if (this.searchType === 'all-authors' && this.authorsCache.length === 0) {
+      // Load first page for browse tabs (check displayedPage, not cache, to handle race with preload)
+      if (this.searchType === 'all-authors' && this.displayedAuthorsPage.length === 0) {
         this.loadAuthorsPage(1);
-      } else if (this.searchType === 'all-titles' && this.titlesCache.length === 0) {
+      } else if (this.searchType === 'all-titles' && this.displayedTitlesPage.length === 0) {
         this.loadTitlesPage(1);
       }
     });
