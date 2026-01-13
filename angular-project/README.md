@@ -1,59 +1,107 @@
-# AngularProject
+# Penguin Random House - Angular Aplikacija
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.1.
+Angular aplikacija za iskanje knjig in avtorjev preko Penguin Random House API-ja.
 
-## Development server
+## Demonstrirani Angular koncepti
 
-To start a local development server, run:
+Ta projekt demonstrira naslednje Angular mehanizme:
+
+| Koncept | Opis | Datoteke |
+| ------- | ---- | -------- |
+| **Data Binding** | Interpolacija, property, event in two-way binding | `search-form.html`, `title-card.html` |
+| **@Input / @Output** | Komunikacija med komponentami | `title-card.component.ts`, `search-form.component.ts` |
+| **Strukturne direktive** | `@if`, `@for`, `@else` | `search-form.html`, `search.html` |
+| **Atributne direktive** | `ngClass`, lastna `appHighlight` | `highlight.directive.ts` |
+| **Template Driven Forms** | `ngModel`, validacija, `#form="ngForm"` | `search-form.html`, `login.html` |
+| **Angular storitve** | `@Injectable`, `providedIn: 'root'` | `auth.service.ts`, `prh-api.service.ts` |
+| **Observables** | `HttpClient`, `pipe()`, `map()`, `subscribe()` | `prh-api.service.ts` |
+| **Routing** | Lazy loading, route guards, parametri | `app.routes.ts` |
+| **JWT & Interceptors** | Auth guard, HTTP interceptors | `auth.guard.ts`, `auth.interceptor.ts` |
+
+## Tehnologije
+
+- **Angular 21** - Standalone komponente
+- **Bootstrap 5** - UI framework
+- **RxJS** - Reaktivno programiranje
+- **TypeScript** - Tipizacija
+
+## Zagon aplikacije
+
+### Predpogoji
+
+- Node.js 18+
+- npm ali yarn
+
+### Namestitev
 
 ```bash
+cd angular-project
+npm install
+```
+
+### Razvojni strežnik
+
+```bash
+npm start
+# ali
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Odpri <http://localhost:4200> v brskalniku.
 
-## Code scaffolding
+### Prijava
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Uporabi poljubno uporabniško ime in geslo (min. 4 znaki).
 
-```bash
-ng generate component component-name
+## Struktura projekta
+
+```text
+src/app/
+├── components/           # Ponovno uporabne komponente
+│   ├── author-card/      # Kartica avtorja
+│   ├── loader/           # Loading spinner
+│   ├── navbar/           # Navigacija
+│   ├── pagination/       # Paginacija
+│   ├── search-form/      # Obrazec za iskanje (TDF)
+│   └── title-card/       # Kartica knjige
+├── directives/           # Lastne direktive
+│   └── highlight.directive.ts
+├── guards/               # Route guards
+│   └── auth.guard.ts
+├── interceptors/         # HTTP interceptors
+│   ├── auth.interceptor.ts
+│   └── error.interceptor.ts
+├── models/               # TypeScript modeli
+├── pages/                # Strani (lazy loaded)
+│   ├── author-detail/
+│   ├── login/
+│   ├── not-found/
+│   ├── search/
+│   └── title-detail/
+├── services/             # Angular storitve
+│   ├── auth.service.ts
+│   └── prh-api.service.ts
+├── app.config.ts         # Konfiguracija aplikacije
+└── app.routes.ts         # Definicija poti
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Ključne datoteke s komentarji
 
-```bash
-ng generate --help
-```
+Vse ključne datoteke vsebujejo podrobne komentarje, ki razlagajo Angular koncepte:
 
-## Building
+- `search-form.component.ts` - @Input/@Output, FormsModule
+- `search-form.html` - Data binding, TDF, direktive
+- `auth.service.ts` - Storitve, Signals, JWT
+- `prh-api.service.ts` - HttpClient, Observables, RxJS
+- `app.routes.ts` - Routing, Lazy loading
+- `auth.guard.ts` - Route guards
+- `auth.interceptor.ts` - HTTP interceptors
+- `highlight.directive.ts` - Custom direktive
 
-To build the project run:
+## API
 
-```bash
-ng build
-```
+Aplikacija uporablja [Penguin Random House API v2](https://developer.penguinrandomhouse.com/).
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Avtor
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Projektna naloga za predmet spletne tehnologije.

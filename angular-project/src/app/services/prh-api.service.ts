@@ -1,3 +1,61 @@
+/**
+ * =============================================================================
+ * PRH API SERVICE - STORITEV ZA API KLICE
+ * =============================================================================
+ *
+ * DEMONSTRIRANI KONCEPTI:
+ * -----------------------
+ * 1. HttpClient          - Angular-ov HTTP odjemalec
+ * 2. Observable<T>       - Asinhroni podatkovni tok (RxJS)
+ * 3. pipe() in map()     - RxJS operatorji za transformacijo
+ * 4. HttpParams          - Gradnja query parametrov
+ * 5. @Injectable         - Dependency Injection
+ *
+ * KAJ JE OBSERVABLE?
+ * ------------------
+ * Observable je kot "obljuba" (Promise), ki lahko vrne VEČ vrednosti.
+ *
+ *   Promise:    Vrne ENO vrednost ali napako
+ *   Observable: Lahko emitira 0, 1, ali VEČ vrednosti skozi čas
+ *
+ * Observable vs Promise:
+ * ----------------------
+ *   Promise:
+ *     fetch('/api/data').then(data => console.log(data));
+ *
+ *   Observable:
+ *     this.http.get('/api/data').subscribe(data => console.log(data));
+ *
+ * KAKO DELUJE HTTP KLIC Z OBSERVABLE:
+ * -----------------------------------
+ *
+ *   ┌────────────────────────────────────────────────────────────────────────┐
+ *   │                        OBSERVABLE FLOW                                 │
+ *   │                                                                        │
+ *   │  1. Ustvari Observable (NE pošlje zahteve še!)                        │
+ *   │     const obs$ = this.http.get('/api/authors');                       │
+ *   │                                                                        │
+ *   │  2. Subscribe sproži HTTP zahtevo                                     │
+ *   │     obs$.subscribe(data => ...);                                      │
+ *   │                                                                        │
+ *   │  3. Ko pride odgovor, Observable emitira vrednost                     │
+ *   │     next: (data) => { this.authors = data; }                          │
+ *   │                                                                        │
+ *   │  4. Observable se zaključi (complete) ali javi napako (error)         │
+ *   └────────────────────────────────────────────────────────────────────────┘
+ *
+ * RxJS OPERATORJI (pipe):
+ * -----------------------
+ *
+ *   this.http.get('/api').pipe(
+ *     map(data => transform(data)),     // Transformira podatke
+ *     filter(data => data.valid),       // Filtrira
+ *     catchError(err => handleError())  // Lovi napake
+ *   ).subscribe(...);
+ *
+ * =============================================================================
+ */
+
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -7,7 +65,13 @@ import { Title, TitlesResponse } from '../models/title.model';
 import { environment } from '../../environments/environment';
 import { TitleSearchCriteria } from '../components/search-form/search-form.component';
 
-// API v2 response interfaces
+// ===========================================================================
+// API RESPONSE INTERFACES
+// ===========================================================================
+/**
+ * TypeScript interfaces za API odgovore
+ * Omogočajo type safety pri delu z zunanjimi API-ji
+ */
 interface ApiV2Author {
   authorId: number;
   display: string;
@@ -40,7 +104,9 @@ interface ApiV2TitlesResponse {
   };
 }
 
-// Response types with pagination info
+/**
+ * Paginated response types za komponente
+ */
 export interface PaginatedAuthorsResponse {
   authors: Author[];
   totalCount: number;
@@ -51,17 +117,42 @@ export interface PaginatedTitlesResponse {
   totalCount: number;
 }
 
+// ===========================================================================
+// API SERVICE
+// ===========================================================================
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root'  // Singleton na root nivoju
 })
 export class PrhApiService {
-  private baseUrl = '/api'; // Using proxy to avoid CORS issues
+  /**
+   * Base URL za API klice
+   * Uporabljamo proxy (/api) za izogib CORS problemom
+   */
+  private baseUrl = '/api';
   private apiKey = environment.prhApiKey;
   private static readonly USD_TO_EUR_RATE = 0.92;
 
+  // ===========================================================================
+  // DEPENDENCY INJECTION - HttpClient
+  // ===========================================================================
+  /**
+   * HttpClient je Angular-ova storitev za HTTP komunikacijo
+   *
+   * Angular jo samodejno vstavi preko DI
+   * Vrača Observable<T> namesto Promise<T>
+   *
+   * Metode:
+   *   - get<T>(url, options)     - GET zahteva
+   *   - post<T>(url, body)       - POST zahteva
+   *   - put<T>(url, body)        - PUT zahteva
+   *   - delete<T>(url)           - DELETE zahteva
+   */
   constructor(private http: HttpClient) {}
 
-  // Currency conversion utility
+  /**
+   * Statična metoda za pretvorbo valut
+   * static = lahko kličeš brez instance: PrhApiService.convertUsdToEur(...)
+   */
   static convertUsdToEur(priceUsd: string | undefined): string {
     if (!priceUsd) return '0.00';
     const usdAmount = parseFloat(priceUsd);
@@ -70,7 +161,10 @@ export class PrhApiService {
     return eurAmount.toFixed(2);
   }
 
-  // Map API v2 author to our model
+  /**
+   * Mapper: Pretvori API format v naš model
+   * Ločimo zunanjo strukturo API-ja od notranje strukture aplikacije
+   */
   private mapApiAuthorToModel(apiAuthor: ApiV2Author): Author {
     return {
       authorid: apiAuthor.authorId.toString(),
@@ -84,16 +178,41 @@ export class PrhApiService {
     };
   }
 
-  // AUTHORS
-  // Note: PRH API v2 /authors endpoint only supports authorLastInitial filter (first letter)
-  // We fetch authors by initial and filter client-side for full name match
+  // ===========================================================================
+  // ISKANJE AVTORJEV - Observable + pipe + map
+  // ===========================================================================
+  /**
+   * OBSERVABLE METODA:
+   * ==================
+   * Vrne Observable<AuthorsResponse> - NE izvede HTTP klica takoj!
+   *
+   * HTTP klic se izvede šele ko nekdo pokliče .subscribe()
+   *
+   * PRIMER UPORABE V KOMPONENTI:
+   * ----------------------------
+   *   this.prhApiService.searchAuthors('Dan', 'Brown')
+   *     .subscribe({
+   *       next: (response) => {
+   *         this.authors = response.author;
+   *       },
+   *       error: (err) => {
+   *         console.error('Napaka:', err);
+   *       }
+   *     });
+   *
+   * HTTPPARAMS:
+   * -----------
+   * Gradnja query string parametrov na type-safe način
+   *   new HttpParams().set('key', 'value').set('key2', 'value2')
+   *   → ?key=value&key2=value2
+   */
   searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
+    // Gradnja query parametrov
     let params = new HttpParams()
       .set('start', '0')
-      .set('rows', '200') // Fetch more to filter client-side
+      .set('rows', '200')
       .set('api_key', this.apiKey);
 
-    // Use authorLastInitial if lastName provided (API's only name filter)
     if (lastName && lastName.length > 0) {
       params = params.set('authorLastInitial', lastName.charAt(0).toUpperCase());
       params = params.set('sort', 'authorLast');
@@ -102,11 +221,30 @@ export class PrhApiService {
     const firstNameLower = firstName?.toLowerCase() || '';
     const lastNameLower = lastName?.toLowerCase() || '';
 
+    /**
+     * HTTP GET + pipe + map:
+     * ======================
+     *
+     * this.http.get<T>(url, { params })
+     *   - Izvede GET zahtevo
+     *   - <T> je pričakovan tip odgovora
+     *   - Vrne Observable<T>
+     *
+     * .pipe(operator1, operator2, ...)
+     *   - Veriženje RxJS operatorjev
+     *   - Vsak operator transformira tok podatkov
+     *
+     * map(response => ...)
+     *   - RxJS operator za transformacijo
+     *   - Podobno kot Array.map(), ampak za Observable
+     *   - Prejme vrednost, vrne transformirano vrednost
+     */
     return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/authors`, { params }).pipe(
       map(response => {
+        // Transformacija: API format → naš model
         let authors = response.data.authors.map(a => this.mapApiAuthorToModel(a));
 
-        // Client-side filtering for more precise matching
+        // Client-side filtriranje
         if (lastNameLower) {
           authors = authors.filter(a =>
             a.authorlastlc?.startsWith(lastNameLower) ||
@@ -125,7 +263,9 @@ export class PrhApiService {
     );
   }
 
-  // Paginated authors with total count
+  /**
+   * Paginirani avtorji s skupnim številom
+   */
   getAuthorsPaginated(start: number = 0, rows: number = 10): Observable<PaginatedAuthorsResponse> {
     const params = new HttpParams()
       .set('start', start.toString())
@@ -140,24 +280,23 @@ export class PrhApiService {
     );
   }
 
+  /**
+   * Pridobi posameznega avtorja po ID-ju
+   */
   getAuthorById(authorId: string): Observable<Author> {
     const params = new HttpParams().set('api_key', this.apiKey);
     return this.http.get<any>(`${this.baseUrl}/authors/${authorId}`, { params }).pipe(
       map(response => {
-        // Handle different response structures
         const data = response.data;
         if (!data) {
           throw new Error('No author data in response');
         }
-        // If data contains an authors array, take the first one
         if (data.authors && Array.isArray(data.authors)) {
           return this.mapApiAuthorToModel(data.authors[0]);
         }
-        // If data contains a single author object
         if (data.author) {
           return this.mapApiAuthorToModel(data.author);
         }
-        // If data has authorId directly (is the author object)
         if (data.authorId) {
           return this.mapApiAuthorToModel(data);
         }
@@ -166,7 +305,9 @@ export class PrhApiService {
     );
   }
 
-  // Map API v2 title to our model
+  /**
+   * Mapper za naslove knjig
+   */
   private mapApiTitleToModel(apiTitle: ApiV2Title): Title {
     if (!apiTitle) {
       throw new Error('Invalid title data received from API');
@@ -179,7 +320,7 @@ export class PrhApiService {
 
     return {
       isbn,
-      isbn10: '', // v2 API doesn't provide ISBN-10 in list view
+      isbn10: '',
       titleweb: apiTitle.title || '',
       titleshort: apiTitle.title || '',
       authorweb: apiTitle.author || '',
@@ -191,35 +332,37 @@ export class PrhApiService {
       pricecanada: apiTitle.price?.find(p => p.currencyCode === 'CAD')?.amount?.toString(),
       pages: apiTitle.pages?.toString(),
       onsaledate: apiTitle.onsale,
-      workid: isbn // Using ISBN as workId fallback
+      workid: isbn
     };
   }
 
-  // Non-book format codes to exclude
+  /**
+   * Formati, ki niso knjige (za filtriranje)
+   */
   private static readonly NON_BOOK_FORMATS = [
     'MU', 'PZ', 'CA', 'GA', 'GI', 'PO', 'ST', 'WL', 'NT', 'CL', 'BX', 'KT'
-    // MU=Mug, PZ=Puzzle, CA=Calendar, GA=Game, GI=Gift, PO=Poster,
-    // ST=Stationery, WL=Wall, NT=Notebook, CL=Cloth, BX=Box, KT=Kit
   ];
 
-  // TITLES
+  // ===========================================================================
+  // ISKANJE NASLOVOV
+  // ===========================================================================
+  /**
+   * Iskanje knjig po kriterijih
+   *
+   * Vrne Observable - komponenta se mora subscribe-ati
+   */
   searchTitles(criteria: TitleSearchCriteria, start: number = 0, rows: number = 50): Observable<TitlesResponse> {
     let params = new HttpParams()
       .set('start', start.toString())
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
 
-    // Use 'title' parameter for precise title search (not 'keyword' which is too broad)
     if (criteria.keyword) {
       params = params.set('title', criteria.keyword);
     }
-
-    // Add author filter
     if (criteria.author) {
       params = params.set('author', criteria.author);
     }
-
-    // Add format filter
     if (criteria.format) {
       params = params.set('format', criteria.format);
     }
@@ -228,7 +371,6 @@ export class PrhApiService {
       map(response => {
         let titles = response.data.titles.map(t => this.mapApiTitleToModel(t));
 
-        // Filter out non-book items if requested
         if (criteria.excludeNonBooks) {
           titles = titles.filter(t =>
             !PrhApiService.NON_BOOK_FORMATS.includes(t.formatcode?.toUpperCase() || '')
@@ -240,18 +382,18 @@ export class PrhApiService {
     );
   }
 
-  // Paginated titles with total count (only books by default)
+  /**
+   * Paginirani naslovi
+   */
   getTitlesPaginated(start: number = 0, rows: number = 10, format?: string): Observable<PaginatedTitlesResponse> {
     let params = new HttpParams()
       .set('start', start.toString())
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
 
-    // Filter by format at API level - use TR (Trade Paperback) as default for books
     if (format) {
       params = params.set('format', format);
     } else {
-      // Default to Trade Paperback to get actual books
       params = params.set('format', 'TR');
     }
 
@@ -263,29 +405,31 @@ export class PrhApiService {
     );
   }
 
+  /**
+   * Pridobi knjigo po ISBN
+   */
   getTitleByIsbn(isbn: string): Observable<Title> {
     const params = new HttpParams().set('api_key', this.apiKey);
     return this.http.get<any>(`${this.baseUrl}/titles/${isbn}`, { params }).pipe(
       map(response => {
-        // Handle different response structures
         const data = response.data;
         if (!data) {
           throw new Error('No title data in response');
         }
-        // If data contains a titles array, take the first one
         if (data.titles && Array.isArray(data.titles)) {
           return this.mapApiTitleToModel(data.titles[0]);
         }
-        // If data contains a single title object
         if (data.title) {
           return this.mapApiTitleToModel(data.title);
         }
-        // Assume data is the title object itself
         return this.mapApiTitleToModel(data);
       })
     );
   }
 
+  /**
+   * Pridobi vse knjige določenega avtorja
+   */
   getTitlesByAuthor(authorId: string, start: number = 0, rows: number = 50): Observable<TitlesResponse> {
     const params = new HttpParams()
       .set('start', start.toString())
@@ -299,8 +443,10 @@ export class PrhApiService {
     );
   }
 
-  // COVER IMAGE URL
-  // API v2 provides cover images through the Penguin Random House CDN
+  /**
+   * URL za naslovnico knjige
+   * Ne vrne Observable - sinhrona metoda
+   */
   getCoverImageUrl(isbn: string): string {
     return `https://images.penguinrandomhouse.com/cover/${isbn}`;
   }

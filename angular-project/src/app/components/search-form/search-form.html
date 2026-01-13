@@ -1,9 +1,75 @@
-<!-- Author Search Form (TDF) -->
+<!--
+================================================================================
+SEARCH FORM TEMPLATE - TEMPLATE DRIVEN FORMS (TDF)
+================================================================================
+
+DEMONSTRIRANI KONCEPTI:
+-----------------------
+1. STRUKTURNE DIREKTIVE:
+   - @if / @else   - pogojno prikazovanje elementov
+   - @for          - iteracija čez array
+
+2. DATA BINDING (vsi 4 tipi):
+   - {{ value }}              - interpolacija (prikaz vrednosti)
+   - [property]="value"       - property binding (nastavitev lastnosti)
+   - (event)="handler()"      - event binding (odziv na dogodke)
+   - [(ngModel)]="property"   - two-way binding (dvosmerna vezava)
+
+3. ATRIBUTNE DIREKTIVE:
+   - [ngClass]  - dinamično dodajanje CSS razredov
+   - [disabled] - onemogočanje elementov
+
+4. TEMPLATE DRIVEN FORMS (TDF):
+   - #form="ngForm"      - referenca na obrazec
+   - #field="ngModel"    - referenca na polje za validacijo
+   - required, minlength - vgrajeni validatorji
+   - form.valid/invalid  - stanje obrazca
+   - field.errors        - napake validacije
+   - field.touched       - ali je uporabnik že bil v polju
+================================================================================
+-->
+
+<!-- ========================================================================
+     OBRAZEC ZA ISKANJE AVTORJEV
+     ========================================================================
+     @if - STRUKTURNA DIREKTIVA
+     Pogojno prikaže cel obrazec, če je searchType === 'authors'
+     Element se DODA ali ODSTRANI iz DOM-a (ni samo skrit)
+     ======================================================================== -->
 @if (searchType === 'authors') {
+
+<!--
+  TEMPLATE DRIVEN FORM SETUP:
+  ---------------------------
+  #authorForm="ngForm" - ustvari referenco na NgForm direktivo
+                         Omogoča dostop do: authorForm.valid, authorForm.invalid
+
+  (ngSubmit)="..."     - EVENT BINDING
+                         Ko uporabnik odda obrazec, pokliče metodo onAuthorSearch()
+-->
 <form #authorForm="ngForm" (ngSubmit)="onAuthorSearch(authorForm)" class="mb-4">
   <div class="row g-3">
+
+    <!-- POLJE: Ime avtorja -->
     <div class="col-md-4">
       <label for="firstName" class="form-label">Ime</label>
+      <!--
+        TWO-WAY BINDING: [(ngModel)]
+        ============================
+        [(ngModel)]="authorCriteria.firstName"
+
+        Je sintaktični sladkor za:
+          [ngModel]="authorCriteria.firstName"
+          (ngModelChange)="authorCriteria.firstName = $event"
+
+        Ko uporabnik tipka → vrednost gre v authorCriteria.firstName
+        Ko se authorCriteria.firstName spremeni → input prikaže novo vrednost
+
+        PROPERTY BINDING: [disabled]
+        ============================
+        [disabled]="isLoading"
+        Onemogoči input med nalaganjem (isLoading = true)
+      -->
       <input
         type="text"
         class="form-control"
@@ -14,8 +80,31 @@
         [disabled]="isLoading"
       />
     </div>
+
+    <!-- POLJE: Priimek avtorja (z validacijo) -->
     <div class="col-md-4">
       <label for="lastName" class="form-label">Priimek</label>
+      <!--
+        VALIDACIJA V TDF:
+        =================
+        required         - polje je obvezno
+        minlength="2"    - minimalno 2 znaka
+
+        #lastName="ngModel" - referenca na NgModel direktivo
+        Omogoča dostop do:
+          - lastName.valid / lastName.invalid
+          - lastName.touched / lastName.untouched
+          - lastName.errors?.['required']
+          - lastName.errors?.['minlength']
+
+        ATRIBUTNA DIREKTIVA: [ngClass]
+        ==============================
+        [ngClass]="{ 'is-invalid': lastName.invalid && lastName.touched }"
+
+        Objekt: { 'css-razred': boolean-pogoj }
+        Če je pogoj true, se razred doda
+        Če je pogoj false, se razred odstrani
+      -->
       <input
         type="text"
         class="form-control"
@@ -29,6 +118,16 @@
         [disabled]="isLoading"
         [ngClass]="{ 'is-invalid': lastName.invalid && lastName.touched }"
       />
+      <!--
+        PRIKAZ NAPAK VALIDACIJE:
+        ========================
+        Prikažemo napake samo če:
+        - lastName.invalid (validacija ni uspešna) IN
+        - lastName.touched (uporabnik je že bil v polju)
+
+        lastName.errors?.['required'] - true če manjka vrednost
+        lastName.errors?.['minlength'] - true če je prekratko
+      -->
       @if (lastName.invalid && lastName.touched) {
       <div class="invalid-feedback">
         @if (lastName.errors?.['required']) { Priimek je obvezen. } @if
@@ -36,12 +135,29 @@
       </div>
       }
     </div>
+
+    <!-- GUMB: Išči -->
     <div class="col-md-4 d-flex align-items-end">
+      <!--
+        ONEMOGOČANJE GUMBA:
+        ===================
+        [disabled]="authorForm.invalid || isLoading"
+
+        Gumb je onemogočen če:
+        - authorForm.invalid (obrazec ni veljaven) ALI
+        - isLoading (poteka iskanje)
+      -->
       <button
         type="submit"
         class="btn btn-primary w-100"
         [disabled]="authorForm.invalid || isLoading"
       >
+        <!--
+          POGOJNI PRIKAZ VSEBINE GUMBA:
+          =============================
+          @if (isLoading) - prikaži spinner
+          @else - prikaži ikono in tekst
+        -->
         @if (isLoading) {
         <span class="spinner-border spinner-border-sm me-1"></span>
         Iščem... } @else {
@@ -52,11 +168,14 @@
 </form>
 }
 
-<!-- Title Search Form (TDF) -->
+<!-- ========================================================================
+     OBRAZEC ZA ISKANJE NASLOVOV
+     ======================================================================== -->
 @if (searchType === 'titles') {
 <form #titleForm="ngForm" (ngSubmit)="onTitleSearch(titleForm)" class="mb-4">
   <div class="row g-3">
-    <!-- Title search -->
+
+    <!-- Naslov knjige (obvezno polje) -->
     <div class="col-md-6">
       <label for="keyword" class="form-label">Naslov</label>
       <input
@@ -80,7 +199,7 @@
       }
     </div>
 
-    <!-- Author filter -->
+    <!-- Filter po avtorju (opcijsko) -->
     <div class="col-md-3">
       <label for="author" class="form-label">Avtor</label>
       <input
@@ -94,9 +213,14 @@
       />
     </div>
 
-    <!-- Format filter -->
+    <!-- Dropdown za izbiro formata -->
     <div class="col-md-3">
       <label for="format" class="form-label">Format</label>
+      <!--
+        SELECT Z TWO-WAY BINDING:
+        =========================
+        [(ngModel)] deluje tudi na <select> elementih
+      -->
       <select
         class="form-select"
         id="format"
@@ -104,15 +228,33 @@
         [(ngModel)]="titleCriteria.format"
         [disabled]="isLoading"
       >
+        <!--
+          @for - STRUKTURNA DIREKTIVA ZA ITERACIJO
+          ========================================
+          @for (item of array; track uniqueKey) { ... }
+
+          track opt.code - Angular uporablja to vrednost za sledenje
+                          elementom pri posodobitvah (optimizacija)
+
+          INTERPOLACIJA: {{ opt.label }}
+          ==============================
+          Prikaže vrednost spremenljivke v HTML-ju
+        -->
         @for (opt of formatOptions; track opt.code) {
           <option [value]="opt.code">{{ opt.label }}</option>
         }
       </select>
     </div>
 
-    <!-- Exclude non-books checkbox -->
+    <!-- Checkbox za izključitev ne-knjig -->
     <div class="col-md-8">
       <div class="form-check">
+        <!--
+          CHECKBOX Z TWO-WAY BINDING:
+          ===========================
+          [(ngModel)] za checkbox veže boolean vrednost
+          true = checked, false = unchecked
+        -->
         <input
           type="checkbox"
           class="form-check-input"
@@ -127,7 +269,7 @@
       </div>
     </div>
 
-    <!-- Search button -->
+    <!-- Gumb za iskanje -->
     <div class="col-md-4 d-flex align-items-end">
       <button
         type="submit"
