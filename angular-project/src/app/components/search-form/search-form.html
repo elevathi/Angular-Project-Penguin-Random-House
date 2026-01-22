@@ -47,7 +47,7 @@ DEMONSTRIRANI KONCEPTI:
   (ngSubmit)="..."     - EVENT BINDING
                          Ko uporabnik odda obrazec, pokliče metodo onAuthorSearch()
 -->
-<form #authorForm="ngForm" (ngSubmit)="onAuthorSearch(authorForm)" class="mb-4">
+<form #authorForm="ngForm" (ngSubmit)="onAuthorSearch()" class="mb-4">
   <div class="row g-3">
 
     <!-- POLJE: Ime avtorja -->
@@ -76,7 +76,7 @@ DEMONSTRIRANI KONCEPTI:
         id="firstName"
         name="firstName"
         [(ngModel)]="authorCriteria.firstName"
-        placeholder="npr. Dan"
+        placeholder="npr. Jordan"
         [disabled]="isLoading"
       />
     </div>
@@ -111,29 +111,10 @@ DEMONSTRIRANI KONCEPTI:
         id="lastName"
         name="lastName"
         [(ngModel)]="authorCriteria.lastName"
-        placeholder="npr. Brown"
-        required
-        minlength="2"
-        #lastName="ngModel"
+        placeholder="npr. Peterson"
         [disabled]="isLoading"
-        [ngClass]="{ 'is-invalid': lastName.invalid && lastName.touched }"
       />
-      <!--
-        PRIKAZ NAPAK VALIDACIJE:
-        ========================
-        Prikažemo napake samo če:
-        - lastName.invalid (validacija ni uspešna) IN
-        - lastName.touched (uporabnik je že bil v polju)
-
-        lastName.errors?.['required'] - true če manjka vrednost
-        lastName.errors?.['minlength'] - true če je prekratko
-      -->
-      @if (lastName.invalid && lastName.touched) {
-      <div class="invalid-feedback">
-        @if (lastName.errors?.['required']) { Priimek je obvezen. } @if
-        (lastName.errors?.['minlength']) { Minimalno 2 znaka. }
-      </div>
-      }
+      <small class="form-text text-muted">Lahko iščete samo po imenu ali priimku</small>
     </div>
 
     <!-- GUMB: Išči -->
@@ -150,7 +131,7 @@ DEMONSTRIRANI KONCEPTI:
       <button
         type="submit"
         class="btn btn-primary w-100"
-        [disabled]="authorForm.invalid || isLoading"
+        [disabled]="isLoading"
       >
         <!--
           POGOJNI PRIKAZ VSEBINE GUMBA:
@@ -172,31 +153,23 @@ DEMONSTRIRANI KONCEPTI:
      OBRAZEC ZA ISKANJE NASLOVOV
      ======================================================================== -->
 @if (searchType === 'titles') {
-<form #titleForm="ngForm" (ngSubmit)="onTitleSearch(titleForm)" class="mb-4">
+<form #titleForm="ngForm" (ngSubmit)="onTitleSearch()" class="mb-4">
   <div class="row g-3">
 
-    <!-- Naslov knjige (obvezno polje) -->
+    <!-- Naslov knjige (opcijsko polje) -->
     <div class="col-md-6">
-      <label for="keyword" class="form-label">Naslov</label>
+      <label for="keyword" class="form-label">Naslov ali ISBN</label>
       <input
         type="text"
         class="form-control"
         id="keyword"
         name="keyword"
         [(ngModel)]="titleCriteria.keyword"
-        placeholder="npr. Da Vinci Code"
-        required
-        minlength="2"
+        placeholder="npr. Maps of Meaning ali 9780140258547"
         #keyword="ngModel"
         [disabled]="isLoading"
-        [ngClass]="{ 'is-invalid': keyword.invalid && keyword.touched }"
       />
-      @if (keyword.invalid && keyword.touched) {
-      <div class="invalid-feedback">
-        @if (keyword.errors?.['required']) { Naslov je obvezen. } @if
-        (keyword.errors?.['minlength']) { Minimalno 2 znaka. }
-      </div>
-      }
+      <small class="form-text text-muted">Opcijsko - lahko iščete tudi samo po avtorju</small>
     </div>
 
     <!-- Filter po avtorju (opcijsko) -->
@@ -208,7 +181,7 @@ DEMONSTRIRANI KONCEPTI:
         id="author"
         name="author"
         [(ngModel)]="titleCriteria.author"
-        placeholder="npr. Dan Brown"
+        placeholder="npr. Peterson"
         [disabled]="isLoading"
       />
     </div>
@@ -274,7 +247,7 @@ DEMONSTRIRANI KONCEPTI:
       <button
         type="submit"
         class="btn btn-primary w-100"
-        [disabled]="titleForm.invalid || isLoading"
+        [disabled]="isLoading"
       >
         @if (isLoading) {
         <span class="spinner-border spinner-border-sm me-1"></span>

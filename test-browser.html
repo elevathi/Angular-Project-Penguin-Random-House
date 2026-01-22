@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PRH API Browser Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+        .output { background: #252526; padding: 15px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .info { color: #9cdcfe; }
+    </style>
+</head>
+<body>
+    <h1>🧪 PRH API Browser Test</h1>
+    <p>Testing API endpoints directly from the browser</p>
+
+    <button onclick="testAuthors()">Test Authors List</button>
+    <button onclick="testTitles()">Test Titles List</button>
+    <button onclick="testViaProxy()">Test via Angular Proxy (localhost:4200)</button>
+
+    <div id="output"></div>
+
+    <script>
+        const API_KEY = 'wfge9j2w6km6w5nfqvyuzk7d';
+        const BASE_URL = 'https://api.penguinrandomhouse.com/resources/v2';
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `output ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.insertBefore(div, output.firstChild);
+        }
+
+        async function testAuthors() {
+            log('Testing Authors endpoint...', 'info');
+            try {
+                const url = `${BASE_URL}/domains/PRH.US/authors?start=0&rows=5&api_key=${API_KEY}`;
+                log(`GET ${url}`, 'info');
+
+                const response = await fetch(url);
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.text();
+                log(`Response: ${data.substring(0, 500)}`, response.ok ? 'success' : 'error');
+
+                if (response.ok) {
+                    const json = JSON.parse(data);
+                    log(`Found ${json.recordCount || 0} authors`, 'success');
+                    log(JSON.stringify(json, null, 2).substring(0, 1000), 'info');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                log(`Full error: ${JSON.stringify(error, null, 2)}`, 'error');
+            }
+        }
+
+        async function testTitles() {
+            log('Testing Titles endpoint...', 'info');
+            try {
+                const url = `${BASE_URL}/domains/PRH.US/titles?start=0&rows=5&api_key=${API_KEY}`;
+                log(`GET ${url}`, 'info');
+
+                const response = await fetch(url);
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.text();
+                log(`Response: ${data.substring(0, 500)}`, response.ok ? 'success' : 'error');
+
+                if (response.ok) {
+                    const json = JSON.parse(data);
+                    log(`Found ${json.recordCount || 0} titles`, 'success');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testViaProxy() {
+            log('Testing via Angular proxy (must be running on localhost:4200)...', 'info');
+            try {
+                const url = `http://localhost:4200/api/domains/PRH.US/authors?start=0&rows=5&api_key=${API_KEY}`;
+                log(`GET ${url}`, 'info');
+
+                const response = await fetch(url);
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.text();
+                log(`Response: ${data.substring(0, 500)}`, response.ok ? 'success' : 'error');
+
+                if (response.ok) {
+                    const json = JSON.parse(data);
+                    log(`Found ${json.recordCount || 0} authors via proxy`, 'success');
+                    log(JSON.stringify(json, null, 2).substring(0, 1000), 'info');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                log(`Make sure Angular dev server is running on port 4200`, 'error');
+            }
+        }
+
+        log('Ready! Click buttons to test API endpoints', 'info');
+    </script>
+</body>
+</html>

@@ -262,51 +262,118 @@ export class SearchComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.authors = [];
+    this.hasSearched = true;
 
-    // Search using authorLastInitial API filter + client-side name filtering
-    this.prhApiService.searchAuthors(criteria.firstName || undefined, criteria.lastName)
+    // Use API service directly for real-time search
+    this.prhApiService.searchAuthors(criteria.firstName, criteria.lastName)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          if (response.author) {
-            this.authors = Array.isArray(response.author) ? response.author : [response.author];
-          }
-          this.hasSearched = true;
+          this.authors = response.author;
           this.isLoading = false;
+          console.log(`Found ${this.authors.length} authors matching criteria`);
         },
         error: (err) => {
-          console.error('Search error:', err);
-          this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
+          console.error('Author search error:', err);
+          this.errorMessage = 'Napaka pri iskanju avtorjev. Poskusite znova.';
           this.isLoading = false;
-          this.hasSearched = true;
-        },
+        }
       });
   }
+
+  // Filter authors from cache based on search criteria
+  private filterAndDisplayAuthors(criteria: AuthorSearchCriteria): void {
+    const firstNameLower = (criteria.firstName || '').toLowerCase();
+    const lastNameLower = (criteria.lastName || '').toLowerCase();
+
+    this.authors = this.authorsCache.filter(author => {
+      let matches = true;
+
+      if (lastNameLower) {
+        matches = matches && (
+          author.authorlast?.toLowerCase().includes(lastNameLower) ||
+          author.authorlastlc?.includes(lastNameLower)
+        );
+      }
+
+      if (firstNameLower) {
+        matches = matches && (
+          author.authorfirst?.toLowerCase().includes(firstNameLower) ||
+          author.authorfirstlc?.includes(firstNameLower)
+        );
+      }
+
+      return matches;
+    });
+
+    this.hasSearched = true;
+    this.isLoading = false;
+    console.log(`Found ${this.authors.length} authors matching criteria`);
+  }
+
 
   // Handle event from child component (Output)
   onTitleSearch(criteria: TitleSearchCriteria): void {
     this.isLoading = true;
     this.errorMessage = '';
     this.titles = [];
+    this.hasSearched = true;
 
-    // Search with full criteria including filters
-    this.prhApiService.searchTitles(criteria, 0, 100)
+    // Use API service directly - supports author name search now!
+    this.prhApiService.searchTitles(criteria)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          if (response.title) {
-            this.titles = Array.isArray(response.title) ? response.title : [response.title];
-          }
-          this.hasSearched = true;
+          this.titles = response.title;
           this.isLoading = false;
+          console.log(`Found ${this.titles.length} titles matching criteria`);
         },
         error: (err) => {
-          console.error('Search error:', err);
-          this.errorMessage = 'Napaka pri iskanju. Poskusi ponovno.';
+          console.error('Title search error:', err);
+          this.errorMessage = 'Napaka pri iskanju naslovov. Poskusite znova.';
           this.isLoading = false;
-          this.hasSearched = true;
-        },
+        }
       });
+  }
+
+  // Filter titles from cache based on search criteria
+  private filterAndDisplayTitles(criteria: TitleSearchCriteria): void {
+    const keywordLower = (criteria.keyword || '').toLowerCase();
+    const authorLower = (criteria.author || '').toLowerCase();
+    const formatCode = criteria.format || '';
+
+    this.titles = this.titlesCache.filter(title => {
+      let matches = true;
+
+      if (keywordLower) {
+        matches = matches && (
+          title.titleweb?.toLowerCase().includes(keywordLower) ||
+          title.titleshort?.toLowerCase().includes(keywordLower)
+        );
+      }
+
+      if (authorLower) {
+        matches = matches && (
+          title.authorweb?.toLowerCase().includes(authorLower) ||
+          title.author?.toLowerCase().includes(authorLower)
+        );
+      }
+
+      if (formatCode && criteria.excludeNonBooks !== false) {
+        matches = matches && title.formatcode === formatCode;
+      }
+
+      if (criteria.excludeNonBooks) {
+        const NON_BOOK_FORMATS = ['AUDIOBOOK', 'MERCHANDISE', 'DIGITAL'];
+        matches = matches && !NON_BOOK_FORMATS.includes(title.formatcode?.toUpperCase() || '');
+      }
+
+      return matches;
+    });
+
+    this.hasSearched = true;
+    this.isLoading = false;
+    console.log(`Found ${this.titles.length} titles matching criteria`);
   }
 
   onAuthorSelected(author: Author): void {
@@ -318,7 +385,7 @@ export class SearchComponent implements OnInit {
   }
 
   // Load authors page - direct API pagination (supports jumping to any page)
-  loadAuthorsPage(page: number): void {
+  loadAuthorsPage(page: number, callback?: () => void): void {
     this.allAuthorsCurrentPage = page;
     const startIndex = (page - 1) * this.allAuthorsItemsPerPage;
     const endIndex = startIndex + this.allAuthorsItemsPerPage;
@@ -350,16 +417,22 @@ export class SearchComponent implements OnInit {
           // Update displayed data with new page
           this.displayedAuthorsPage = this.getAuthorsPageFromCache();
           this.isLoadingAuthorsPage = false;
+          
+          // Call callback if provided (used by search)
+          if (callback) {
+            callback();
+          }
         },
         error: (err) => {
           console.error('Error loading authors:', err);
           this.isLoadingAuthorsPage = false;
+          if (callback) callback();
         }
       });
   }
 
   // Load titles page - direct API pagination (supports jumping to any page)
-  loadTitlesPage(page: number): void {
+  loadTitlesPage(page: number, callback?: () => void): void {
     this.allTitlesCurrentPage = page;
     const startIndex = (page - 1) * this.allTitlesItemsPerPage;
     const endIndex = startIndex + this.allTitlesItemsPerPage;

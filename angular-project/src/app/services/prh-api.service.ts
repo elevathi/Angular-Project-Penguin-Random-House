@@ -58,8 +58,8 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, throwError, of } from 'rxjs';
+import { map, catchError, mergeMap } from 'rxjs/operators';
 import { Author, AuthorsResponse } from '../models/author.model';
 import { Title, TitlesResponse } from '../models/title.model';
 import { environment } from '../../environments/environment';
@@ -133,6 +133,14 @@ export class PrhApiService {
   private static readonly USD_TO_EUR_RATE = 0.92;
 
   // ===========================================================================
+  // CACHING STRATEGY
+  // ===========================================================================
+  private authorsCache: Author[] | null = null;
+  private titlesCache: Title[] | null = null;
+  private authorsCacheLoading = false;
+  private titlesCacheLoading = false;
+
+  // ===========================================================================
   // DEPENDENCY INJECTION - HttpClient
   // ===========================================================================
   /**
@@ -159,6 +167,186 @@ export class PrhApiService {
     if (isNaN(usdAmount)) return '0.00';
     const eurAmount = usdAmount * PrhApiService.USD_TO_EUR_RATE;
     return eurAmount.toFixed(2);
+  }
+
+  // ===========================================================================
+  // CACHE LOADING METHODS
+  // ===========================================================================
+
+  /**
+   * Preload both authors and titles cache in the background
+   * Call this on app initialization for instant search experience
+   *
+   * Usage in component:
+   *   constructor(private prhApiService: PrhApiService) {
+   *     this.prhApiService.preloadCaches();
+   *   }
+   */
+  preloadCaches(): void {
+    console.log('🚀 Preloading caches in background...');
+
+    // Load both caches in parallel
+    this.loadAllAuthorsIntoCache().subscribe({
+      next: () => console.log('✅ Authors cache preloaded'),
+      error: (err) => console.error('❌ Error preloading authors:', err)
+    });
+
+    this.loadAllTitlesIntoCache().subscribe({
+      next: () => console.log('✅ Titles cache preloaded'),
+      error: (err) => console.error('❌ Error preloading titles:', err)
+    });
+  }
+
+  /**
+   * Load all authors into cache (103,340 authors)
+   * Uses parallel batch loading for performance
+   */
+  loadAllAuthorsIntoCache(): Observable<void> {
+    if (this.authorsCache) {
+      console.log('✅ Authors cache already loaded:', this.authorsCache.length, 'authors');
+      return of(void 0);
+    }
+
+    if (this.authorsCacheLoading) {
+      console.log('⏳ Authors cache already loading...');
+      return of(void 0);
+    }
+
+    this.authorsCacheLoading = true;
+    console.log('🔄 Loading all authors into cache...');
+
+    // Load in batches of 5000 (21 batches for 103,340 authors)
+    const batchSize = 5000;
+    const totalAuthors = 103340;
+    const batches = Math.ceil(totalAuthors / batchSize);
+
+    const batchRequests: Observable<Author[]>[] = [];
+
+    for (let i = 0; i < batches; i++) {
+      const start = i * batchSize;
+      const params = new HttpParams()
+        .set('start', start.toString())
+        .set('rows', batchSize.toString())
+        .set('api_key', this.apiKey);
+
+      const request = this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/domains/PRH.US/authors`, { params }).pipe(
+        map(response => response.data.authors.map(a => this.mapApiAuthorToModel(a))),
+        catchError(() => of([]))
+      );
+
+      batchRequests.push(request);
+    }
+
+    // Execute all batches in parallel and combine results
+    return new Observable<void>(observer => {
+      let loadedBatches = 0;
+      const allAuthors: Author[] = [];
+
+      batchRequests.forEach((request, index) => {
+        request.subscribe({
+          next: (authors) => {
+            allAuthors.push(...authors);
+            loadedBatches++;
+            console.log(`📦 Loaded batch ${loadedBatches}/${batches}: ${authors.length} authors (Total: ${allAuthors.length})`);
+
+            if (loadedBatches === batches) {
+              this.authorsCache = allAuthors;
+              this.authorsCacheLoading = false;
+              console.log('✅ All authors loaded into cache:', this.authorsCache.length, 'authors');
+              observer.next();
+              observer.complete();
+            }
+          },
+          error: (err) => {
+            console.error(`❌ Error loading batch ${index + 1}:`, err);
+            loadedBatches++;
+            if (loadedBatches === batches) {
+              this.authorsCache = allAuthors;
+              this.authorsCacheLoading = false;
+              console.log('⚠️ Authors cache loaded with errors:', this.authorsCache.length, 'authors');
+              observer.next();
+              observer.complete();
+            }
+          }
+        });
+      });
+    });
+  }
+
+  /**
+   * Load all titles into cache (96,282 titles)
+   * Uses parallel batch loading for performance
+   */
+  loadAllTitlesIntoCache(): Observable<void> {
+    if (this.titlesCache) {
+      console.log('✅ Titles cache already loaded:', this.titlesCache.length, 'titles');
+      return of(void 0);
+    }
+
+    if (this.titlesCacheLoading) {
+      console.log('⏳ Titles cache already loading...');
+      return of(void 0);
+    }
+
+    this.titlesCacheLoading = true;
+    console.log('🔄 Loading all titles into cache...');
+
+    // Load in batches of 5000 (20 batches for 96,282 titles)
+    const batchSize = 5000;
+    const totalTitles = 96282;
+    const batches = Math.ceil(totalTitles / batchSize);
+
+    const batchRequests: Observable<Title[]>[] = [];
+
+    for (let i = 0; i < batches; i++) {
+      const start = i * batchSize;
+      const params = new HttpParams()
+        .set('start', start.toString())
+        .set('rows', batchSize.toString())
+        .set('api_key', this.apiKey);
+
+      const request = this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/domains/PRH.US/titles`, { params }).pipe(
+        map(response => response.data.titles.map(t => this.mapApiTitleToModel(t))),
+        catchError(() => of([]))
+      );
+
+      batchRequests.push(request);
+    }
+
+    // Execute all batches in parallel and combine results
+    return new Observable<void>(observer => {
+      let loadedBatches = 0;
+      const allTitles: Title[] = [];
+
+      batchRequests.forEach((request, index) => {
+        request.subscribe({
+          next: (titles) => {
+            allTitles.push(...titles);
+            loadedBatches++;
+            console.log(`📦 Loaded batch ${loadedBatches}/${batches}: ${titles.length} titles (Total: ${allTitles.length})`);
+
+            if (loadedBatches === batches) {
+              this.titlesCache = allTitles;
+              this.titlesCacheLoading = false;
+              console.log('✅ All titles loaded into cache:', this.titlesCache.length, 'titles');
+              observer.next();
+              observer.complete();
+            }
+          },
+          error: (err) => {
+            console.error(`❌ Error loading batch ${index + 1}:`, err);
+            loadedBatches++;
+            if (loadedBatches === batches) {
+              this.titlesCache = allTitles;
+              this.titlesCacheLoading = false;
+              console.log('⚠️ Titles cache loaded with errors:', this.titlesCache.length, 'titles');
+              observer.next();
+              observer.complete();
+            }
+          }
+        });
+      });
+    });
   }
 
   /**
@@ -206,65 +394,104 @@ export class PrhApiService {
    *   new HttpParams().set('key', 'value').set('key2', 'value2')
    *   → ?key=value&key2=value2
    */
+  /**
+   * Iskanje avtorjev po imenu
+   * 
+   * API Endpoint: GET /domains/{domain}/authors
+   * 
+   * PARAMETRI:
+   * - start: indeks prve vrstice (privzeto 0)
+   * - rows: število vrnjenih rezultatov (privzeto 10, tukaj 200)
+   * - authorLastInitial: filtriranje po začetnici priimka
+   * - sort: sortiranje ('id', 'authorLast', 'random')
+   * 
+   * @param firstName - Ime avtorja (opcijsko)
+   * @param lastName - Priimek avtorja (opcijsko, filtrira po začetnici)
+   * @returns Observable z avtorji, ki se ujemajo s kriteriji
+   * 
+   * PRIMER UPORABE V KOMPONENTI:
+   * ----------------------------
+   *   this.prhApiService.searchAuthors('Dan', 'Brown')
+   *     .subscribe({
+   *       next: (response) => {
+   *         this.authors = response.author;
+   *       },
+   *       error: (err) => {
+   *         console.error('Napaka:', err);
+   *       }
+   *     });
+   *
+   * HTTPPARAMS:
+   * -----------
+   * Gradnja query string parametrov na type-safe način
+   *   new HttpParams().set('key', 'value').set('key2', 'value2')
+   *   → ?key=value&key2=value2
+   */
   searchAuthors(firstName?: string, lastName?: string): Observable<AuthorsResponse> {
-    // Gradnja query parametrov
-    let params = new HttpParams()
-      .set('start', '0')
-      .set('rows', '200')
-      .set('api_key', this.apiKey);
+    console.log('👤 searchAuthors called - firstName:', firstName, 'lastName:', lastName);
 
-    if (lastName && lastName.length > 0) {
-      params = params.set('authorLastInitial', lastName.charAt(0).toUpperCase());
-      params = params.set('sort', 'authorLast');
+    // Use cache if available, otherwise load it first
+    if (!this.authorsCache) {
+      console.log('📥 Cache not loaded, loading all authors first...');
+      return this.loadAllAuthorsIntoCache().pipe(
+        map(() => this.searchAuthorsInCache(firstName, lastName))
+      );
     }
+
+    // Search in cache
+    return of(this.searchAuthorsInCache(firstName, lastName));
+  }
+
+  /**
+   * Search authors in cache (instant search across all 103k+ authors)
+   */
+  private searchAuthorsInCache(firstName?: string, lastName?: string): AuthorsResponse {
+    if (!this.authorsCache) {
+      return { author: [] };
+    }
+
+    console.log('🔍 Searching in cache of', this.authorsCache.length, 'authors');
 
     const firstNameLower = firstName?.toLowerCase() || '';
     const lastNameLower = lastName?.toLowerCase() || '';
 
-    /**
-     * HTTP GET + pipe + map:
-     * ======================
-     *
-     * this.http.get<T>(url, { params })
-     *   - Izvede GET zahtevo
-     *   - <T> je pričakovan tip odgovora
-     *   - Vrne Observable<T>
-     *
-     * .pipe(operator1, operator2, ...)
-     *   - Veriženje RxJS operatorjev
-     *   - Vsak operator transformira tok podatkov
-     *
-     * map(response => ...)
-     *   - RxJS operator za transformacijo
-     *   - Podobno kot Array.map(), ampak za Observable
-     *   - Prejme vrednost, vrne transformirano vrednost
-     */
-    return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/authors`, { params }).pipe(
-      map(response => {
-        // Transformacija: API format → naš model
-        let authors = response.data.authors.map(a => this.mapApiAuthorToModel(a));
+    let authors = [...this.authorsCache];
 
-        // Client-side filtriranje
-        if (lastNameLower) {
-          authors = authors.filter(a =>
-            a.authorlastlc?.startsWith(lastNameLower) ||
-            a.authorlast?.toLowerCase().startsWith(lastNameLower)
-          );
-        }
-        if (firstNameLower) {
-          authors = authors.filter(a =>
-            a.authorfirstlc?.startsWith(firstNameLower) ||
-            a.authorfirst?.toLowerCase().startsWith(firstNameLower)
-          );
-        }
+    // Filter by last name
+    if (lastNameLower) {
+      const beforeFilter = authors.length;
+      authors = authors.filter(a =>
+        a.authorlastlc?.startsWith(lastNameLower) ||
+        a.authorlast?.toLowerCase().startsWith(lastNameLower)
+      );
+      console.log('🔎 Last name filter:', beforeFilter, '→', authors.length, 'authors');
+    }
 
-        return { author: authors };
-      })
-    );
+    // Filter by first name
+    if (firstNameLower) {
+      const beforeFilter = authors.length;
+      authors = authors.filter(a =>
+        a.authorfirstlc?.startsWith(firstNameLower) ||
+        a.authorfirst?.toLowerCase().startsWith(firstNameLower)
+      );
+      console.log('🔎 First name filter:', beforeFilter, '→', authors.length, 'authors');
+    }
+
+    console.log('✅ Final author result:', authors.length, 'authors');
+    return { author: authors };
   }
 
   /**
    * Paginirani avtorji s skupnim številom
+   * 
+   * API Endpoint: GET /domains/{domain}/authors
+   * 
+   * Vrne avtorje z paginacijo in skupnim številom dostopnih avtorjev.
+   * Primerno za browse/listing funkcionalno.
+   * 
+   * @param start - Začetni indeks (privzeto 0)
+   * @param rows - Število avtorjev na stran (privzeto 10)
+   * @returns Observable s paginiranimi avtorji in skupnim številom
    */
   getAuthorsPaginated(start: number = 0, rows: number = 10): Observable<PaginatedAuthorsResponse> {
     const params = new HttpParams()
@@ -272,7 +499,7 @@ export class PrhApiService {
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
 
-    return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/authors`, { params }).pipe(
+    return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/domains/PRH.US/authors`, { params }).pipe(
       map(response => ({
         authors: response.data.authors.map(a => this.mapApiAuthorToModel(a)),
         totalCount: response.recordCount
@@ -283,9 +510,22 @@ export class PrhApiService {
   /**
    * Pridobi posameznega avtorja po ID-ju
    */
-  getAuthorById(authorId: string): Observable<Author> {
-    const params = new HttpParams().set('api_key', this.apiKey);
-    return this.http.get<any>(`${this.baseUrl}/authors/${authorId}`, { params }).pipe(
+  /**
+   * Pridobi podrobnosti avtorja po ID
+   * 
+   * API Endpoint: GET /domains/{domain}/authors/{authorId}
+   * 
+   * Vrne detaljne informacije o avtorju, vključno z njegovimi deli.
+   * 
+   * @param authorId - ID avtorja
+   * @param domain - Domenski filter (privzeto 'PRH.US')
+   * @returns Observable z avtorjevimi podatki
+   */
+  getAuthorById(authorId: string, domain: string = 'PRH.US'): Observable<Author> {
+    let params = new HttpParams()
+      .set('api_key', this.apiKey);
+
+    return this.http.get<any>(`${this.baseUrl}/domains/${domain}/authors/${authorId}`, { params }).pipe(
       map(response => {
         const data = response.data;
         if (!data) {
@@ -297,7 +537,7 @@ export class PrhApiService {
         if (data.author) {
           return this.mapApiAuthorToModel(data.author);
         }
-        if (data.authorId) {
+        if (data.authorId || data.id) {
           return this.mapApiAuthorToModel(data);
         }
         throw new Error('Could not parse author response');
@@ -349,38 +589,172 @@ export class PrhApiService {
   /**
    * Iskanje knjig po kriterijih
    *
+   * NOTE: PRH API ne podpira iskanja po besedilu naslova.
+   *
+   * STRATEGIJA:
+   * - Če je podan author, najprej poišči avtorja in nato njegove knjige
+   * - Če je podan ISBN (samo številke), uporabi isbn parameter
+   * - Za iskanje po besedilu naslova uporabite client-side filtering
+   *
    * Vrne Observable - komponenta se mora subscribe-ati
    */
-  searchTitles(criteria: TitleSearchCriteria, start: number = 0, rows: number = 50): Observable<TitlesResponse> {
-    let params = new HttpParams()
-      .set('start', start.toString())
-      .set('rows', rows.toString())
-      .set('api_key', this.apiKey);
+  searchTitles(criteria: TitleSearchCriteria, start: number = 0, rows: number = 1000): Observable<TitlesResponse> {
+    console.log('🔍 searchTitles called with criteria:', criteria);
 
-    if (criteria.keyword) {
-      params = params.set('title', criteria.keyword);
+    // If searching by author name, use the two-step process (author search + filter)
+    if (criteria.author && criteria.author.trim()) {
+      console.log('📚 Using two-step author search for:', criteria.author);
+      return this.searchTitlesByAuthorNameCached(criteria);
     }
-    if (criteria.author) {
-      params = params.set('author', criteria.author);
+
+    // Use cache if available, otherwise load it first
+    if (!this.titlesCache) {
+      console.log('📥 Cache not loaded, loading all titles first...');
+      return this.loadAllTitlesIntoCache().pipe(
+        map(() => this.searchTitlesInCache(criteria))
+      );
     }
+
+    // Search in cache
+    return of(this.searchTitlesInCache(criteria));
+  }
+
+  /**
+   * Search titles in cache (instant search across all 96k+ titles)
+   */
+  private searchTitlesInCache(criteria: TitleSearchCriteria): TitlesResponse {
+    if (!this.titlesCache) {
+      return { title: [] };
+    }
+
+    console.log('🔍 Searching in cache of', this.titlesCache.length, 'titles');
+
+    let titles = [...this.titlesCache];
+
+    // Filter by ISBN (exact match)
+    if (criteria.keyword && /^\d+$/.test(criteria.keyword)) {
+      console.log('🔢 Searching by ISBN:', criteria.keyword);
+      const beforeFilter = titles.length;
+      titles = titles.filter(t => t.isbn === criteria.keyword);
+      console.log('🔎 ISBN filter:', beforeFilter, '→', titles.length, 'titles');
+    }
+    // Filter by keyword (title search)
+    else if (criteria.keyword && criteria.keyword.trim()) {
+      const keywordLower = criteria.keyword.toLowerCase();
+      const beforeFilter = titles.length;
+      titles = titles.filter(t =>
+        t.titleweb?.toLowerCase().includes(keywordLower) ||
+        t.titleshort?.toLowerCase().includes(keywordLower)
+      );
+      console.log('🔎 Keyword filter:', beforeFilter, '→', titles.length, 'titles');
+    }
+
+    // Filter by format
     if (criteria.format) {
-      params = params.set('format', criteria.format);
+      const beforeFilter = titles.length;
+      titles = titles.filter(t => t.formatcode === criteria.format);
+      console.log('📖 Format filter:', beforeFilter, '→', titles.length, 'titles');
     }
 
-    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/titles`, { params }).pipe(
-      map(response => {
-        let titles = response.data.titles.map(t => this.mapApiTitleToModel(t));
+    // Exclude non-books
+    if (criteria.excludeNonBooks) {
+      const beforeFilter = titles.length;
+      titles = titles.filter(t =>
+        !PrhApiService.NON_BOOK_FORMATS.includes(t.formatcode?.toUpperCase() || '')
+      );
+      console.log('📚 Non-book filter:', beforeFilter, '→', titles.length, 'titles');
+    }
 
-        if (criteria.excludeNonBooks) {
-          titles = titles.filter(t =>
-            !PrhApiService.NON_BOOK_FORMATS.includes(t.formatcode?.toUpperCase() || '')
+    console.log('✅ Final result:', titles.length, 'titles');
+    return { title: titles };
+  }
+
+  /**
+   * Search titles by author name using cache (two-step process)
+   * 1. Find authors matching the name
+   * 2. Filter titles by those authors
+   */
+  private searchTitlesByAuthorNameCached(criteria: TitleSearchCriteria): Observable<TitlesResponse> {
+    const authorParts = (criteria.author || '').trim().split(/\s+/);
+    const firstName = authorParts.length > 1 ? authorParts[0] : '';
+    const lastName = authorParts.length > 1 ? authorParts[authorParts.length - 1] : authorParts[0];
+
+    console.log('👤 Step 1: Searching for author - firstName:', firstName, 'lastName:', lastName);
+
+    // Step 1: Find authors
+    return this.searchAuthors(firstName, lastName).pipe(
+      mergeMap(authorsResponse => {
+        const authors = authorsResponse.author;
+        console.log('👥 Step 1 Result: Found', authors?.length || 0, 'authors');
+
+        if (!authors || authors.length === 0) {
+          console.log('❌ No authors found');
+          return of({ title: [] });
+        }
+
+        // Get author names for filtering
+        const authorNames = authors.map(a => a.authordisplay?.toLowerCase() || '');
+        console.log('📝 Searching for titles by these authors:', authorNames.slice(0, 5));
+
+        // Step 2: Load titles cache if needed, then filter
+        if (!this.titlesCache) {
+          console.log('📥 Loading titles cache...');
+          return this.loadAllTitlesIntoCache().pipe(
+            map(() => this.filterTitlesByAuthors(authorNames, criteria))
           );
         }
 
-        return { title: titles };
+        return of(this.filterTitlesByAuthors(authorNames, criteria));
       })
     );
   }
+
+  /**
+   * Filter titles by author names in cache
+   */
+  private filterTitlesByAuthors(authorNames: string[], criteria: TitleSearchCriteria): TitlesResponse {
+    if (!this.titlesCache) {
+      return { title: [] };
+    }
+
+    console.log('📚 Step 2: Filtering titles by', authorNames.length, 'authors');
+
+    let titles = this.titlesCache.filter(t => {
+      const titleAuthor = t.authorweb?.toLowerCase() || '';
+      return authorNames.some(name => titleAuthor.includes(name));
+    });
+
+    console.log('📦 Found', titles.length, 'titles by these authors');
+
+    // Apply additional filters
+    if (criteria.keyword && criteria.keyword.trim()) {
+      const keywordLower = criteria.keyword.toLowerCase();
+      const beforeFilter = titles.length;
+      titles = titles.filter(t =>
+        t.titleweb?.toLowerCase().includes(keywordLower) ||
+        t.titleshort?.toLowerCase().includes(keywordLower)
+      );
+      console.log('🔎 Keyword filter:', beforeFilter, '→', titles.length, 'titles');
+    }
+
+    if (criteria.format) {
+      const beforeFilter = titles.length;
+      titles = titles.filter(t => t.formatcode === criteria.format);
+      console.log('📖 Format filter:', beforeFilter, '→', titles.length, 'titles');
+    }
+
+    if (criteria.excludeNonBooks) {
+      const beforeFilter = titles.length;
+      titles = titles.filter(t =>
+        !PrhApiService.NON_BOOK_FORMATS.includes(t.formatcode?.toUpperCase() || '')
+      );
+      console.log('📚 Non-book filter:', beforeFilter, '→', titles.length, 'titles');
+    }
+
+    console.log('✅ Final result:', titles.length, 'titles');
+    return { title: titles };
+  }
+
 
   /**
    * Paginirani naslovi
@@ -397,7 +771,7 @@ export class PrhApiService {
       params = params.set('format', 'TR');
     }
 
-    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/titles`, { params }).pipe(
+    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/domains/PRH.US/titles`, { params }).pipe(
       map(response => ({
         titles: response.data.titles.map(t => this.mapApiTitleToModel(t)),
         totalCount: response.recordCount
@@ -410,7 +784,7 @@ export class PrhApiService {
    */
   getTitleByIsbn(isbn: string): Observable<Title> {
     const params = new HttpParams().set('api_key', this.apiKey);
-    return this.http.get<any>(`${this.baseUrl}/titles/${isbn}`, { params }).pipe(
+    return this.http.get<any>(`${this.baseUrl}/domains/PRH.US/titles/${isbn}`, { params }).pipe(
       map(response => {
         const data = response.data;
         if (!data) {
@@ -429,14 +803,22 @@ export class PrhApiService {
 
   /**
    * Pridobi vse knjige določenega avtorja
+   *
+   * API Endpoint: GET /domains/{domain}/authors/{authorId}/titles
+   *
+   * @param authorId - ID avtorja
+   * @param start - Začetni indeks (privzeto 0)
+   * @param rows - Število vrnjenih rezultatov (privzeto 50)
+   * @param domain - Domenski filter (privzeto 'PRH.US')
+   * @returns Observable z naslovom avtorjevih del
    */
-  getTitlesByAuthor(authorId: string, start: number = 0, rows: number = 50): Observable<TitlesResponse> {
+  getTitlesByAuthor(authorId: string, start: number = 0, rows: number = 50, domain: string = 'PRH.US'): Observable<TitlesResponse> {
     const params = new HttpParams()
       .set('start', start.toString())
       .set('rows', rows.toString())
       .set('api_key', this.apiKey);
 
-    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/authors/${authorId}/titles`, { params }).pipe(
+    return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/domains/${domain}/authors/${authorId}/titles`, { params }).pipe(
       map(response => ({
         title: response.data.titles.map(t => this.mapApiTitleToModel(t))
       }))

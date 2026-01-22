@@ -1,6 +1,6 @@
 {
   "/api": {
-    "target": "https://api.penguinrandomhouse.com/resources/v2/title/domains/PRH.US",
+    "target": "https://api.penguinrandomhouse.com/resources/v2",
     "secure": true,
     "changeOrigin": true,
     "pathRewrite": {

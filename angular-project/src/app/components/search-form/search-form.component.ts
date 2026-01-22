@@ -136,24 +136,29 @@ export class SearchFormComponent {
   /**
    * Kliče se ob oddaji obrazca avtorjev (ngSubmit)
    *
-   * @param form - referenca na NgForm objekt iz predloge (#authorForm="ngForm")
-   *
-   * form.valid - true če so vsi validatorji uspešni
-   *
    * this.authorSearch.emit() - pošlje dogodek staršu z iskalnimi kriteriji
    * Spread operator {...} ustvari kopijo objekta (immutability)
    */
-  onAuthorSearch(form: any): void {
-    if (form.valid) {
+  onAuthorSearch(): void {
+    // Preveri, če je vsaj eno polje izpolnjeno
+    const hasFirstName = this.authorCriteria.firstName?.trim();
+    const hasLastName = this.authorCriteria.lastName?.trim();
+
+    if (hasFirstName || hasLastName) {
       this.authorSearch.emit({ ...this.authorCriteria });
     }
   }
 
   /**
    * Kliče se ob oddaji obrazca naslovov
+   * Dovoljuje iskanje samo po avtorju (brez naslova)
    */
-  onTitleSearch(form: any): void {
-    if (form.valid) {
+  onTitleSearch(): void {
+    // Preveri, če je vsaj eno polje izpolnjeno
+    const hasKeyword = this.titleCriteria.keyword?.trim();
+    const hasAuthor = this.titleCriteria.author?.trim();
+
+    if (hasKeyword || hasAuthor) {
       this.titleSearch.emit({ ...this.titleCriteria });
     }
   }
