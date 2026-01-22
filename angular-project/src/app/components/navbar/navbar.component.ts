@@ -11,7 +11,6 @@ import { AuthService } from '../../services/auth.service';
 })
 export class NavbarComponent {
   authService = inject(AuthService);
-
   logout(): void {
     this.authService.logout();
   }

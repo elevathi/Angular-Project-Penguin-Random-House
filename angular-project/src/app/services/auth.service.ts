@@ -183,6 +183,7 @@ export class AuthService {
     // Ponastavi reaktivno stanje
     this.currentUser.set(null);
     this.isLoggedIn.set(false);
+    //TODO add router navigation to login page
   }
 
   /**
