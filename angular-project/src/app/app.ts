@@ -1,7 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar.component';
-import { PrhApiService } from './services/prh-api.service';
 
 @Component({
   selector: 'app',
@@ -9,18 +8,9 @@ import { PrhApiService } from './services/prh-api.service';
   imports: [RouterOutlet, NavbarComponent],
   templateUrl: './app.html'
 })
-export class App implements OnInit {
+export class App {
   /**
-   * Inject PrhApiService to preload caches on app startup
+   * Cache preloading disabled - cache loads on-demand when user searches
+   * This makes app startup instant, but first search will take ~60-90 seconds
    */
-  constructor(private prhApiService: PrhApiService) {}
-
-  /**
-   * Preload authors and titles cache in the background
-   * This ensures instant search results without waiting on first search
-   */
-  ngOnInit(): void {
-    console.log('🚀 App initialized - preloading search caches...');
-    this.prhApiService.preloadCaches();
-  }
 }

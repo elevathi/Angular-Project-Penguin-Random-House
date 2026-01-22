@@ -58,8 +58,8 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, throwError, of } from 'rxjs';
-import { map, catchError, mergeMap } from 'rxjs/operators';
+import { Observable, throwError, of, from } from 'rxjs';
+import { map, catchError, mergeMap, concatMap, delay, toArray } from 'rxjs/operators';
 import { Author, AuthorsResponse } from '../models/author.model';
 import { Title, TitlesResponse } from '../models/title.model';
 import { environment } from '../../environments/environment';
@@ -175,7 +175,7 @@ export class PrhApiService {
 
   /**
    * Preload both authors and titles cache in the background
-   * Call this on app initialization for instant search experience
+   * Loads authors FIRST, then titles (fully sequential to avoid overwhelming API)
    *
    * Usage in component:
    *   constructor(private prhApiService: PrhApiService) {
@@ -184,22 +184,30 @@ export class PrhApiService {
    */
   preloadCaches(): void {
     console.log('🚀 Preloading caches in background...');
+    console.log('📋 Step 1: Loading authors first...');
 
-    // Load both caches in parallel
+    // Load authors FIRST, then titles (fully sequential)
     this.loadAllAuthorsIntoCache().subscribe({
-      next: () => console.log('✅ Authors cache preloaded'),
-      error: (err) => console.error('❌ Error preloading authors:', err)
-    });
+      next: () => {
+        console.log('✅ Authors cache preloaded');
+        console.log('📋 Step 2: Now loading titles...');
 
-    this.loadAllTitlesIntoCache().subscribe({
-      next: () => console.log('✅ Titles cache preloaded'),
-      error: (err) => console.error('❌ Error preloading titles:', err)
+        // Only start titles after authors complete
+        this.loadAllTitlesIntoCache().subscribe({
+          next: () => console.log('✅ Titles cache preloaded'),
+          error: (err) => console.error('❌ Error preloading titles:', err)
+        });
+      },
+      error: (err) => {
+        console.error('❌ Error preloading authors:', err);
+        console.log('⚠️ Skipping titles cache due to authors error');
+      }
     });
   }
 
   /**
    * Load all authors into cache (103,340 authors)
-   * Uses parallel batch loading for performance
+   * Uses SEQUENTIAL batch loading with proper waiting between batches
    */
   loadAllAuthorsIntoCache(): Observable<void> {
     if (this.authorsCache) {
@@ -213,69 +221,62 @@ export class PrhApiService {
     }
 
     this.authorsCacheLoading = true;
-    console.log('🔄 Loading all authors into cache...');
+    console.log('🔄 Loading all authors into cache (sequential batches with delays)...');
 
     // Load in batches of 5000 (21 batches for 103,340 authors)
     const batchSize = 5000;
     const totalAuthors = 103340;
     const batches = Math.ceil(totalAuthors / batchSize);
 
-    const batchRequests: Observable<Author[]>[] = [];
+    // Create array of batch numbers [0, 1, 2, ..., 20]
+    const batchNumbers = Array.from({ length: batches }, (_, i) => i);
 
-    for (let i = 0; i < batches; i++) {
-      const start = i * batchSize;
-      const params = new HttpParams()
-        .set('start', start.toString())
-        .set('rows', batchSize.toString())
-        .set('api_key', this.apiKey);
+    // Use concatMap to ensure each batch waits for previous to complete
+    return from(batchNumbers).pipe(
+      concatMap(i => {
+        const start = i * batchSize;
+        const batchNumber = i + 1;
 
-      const request = this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/domains/PRH.US/authors`, { params }).pipe(
-        map(response => response.data.authors.map(a => this.mapApiAuthorToModel(a))),
-        catchError(() => of([]))
-      );
+        const params = new HttpParams()
+          .set('start', start.toString())
+          .set('rows', batchSize.toString())
+          .set('api_key', this.apiKey);
 
-      batchRequests.push(request);
-    }
+        console.log(`🔄 Loading batch ${batchNumber}/${batches}...`);
 
-    // Execute all batches in parallel and combine results
-    return new Observable<void>(observer => {
-      let loadedBatches = 0;
-      const allAuthors: Author[] = [];
-
-      batchRequests.forEach((request, index) => {
-        request.subscribe({
-          next: (authors) => {
-            allAuthors.push(...authors);
-            loadedBatches++;
-            console.log(`📦 Loaded batch ${loadedBatches}/${batches}: ${authors.length} authors (Total: ${allAuthors.length})`);
-
-            if (loadedBatches === batches) {
-              this.authorsCache = allAuthors;
-              this.authorsCacheLoading = false;
-              console.log('✅ All authors loaded into cache:', this.authorsCache.length, 'authors');
-              observer.next();
-              observer.complete();
-            }
-          },
-          error: (err) => {
-            console.error(`❌ Error loading batch ${index + 1}:`, err);
-            loadedBatches++;
-            if (loadedBatches === batches) {
-              this.authorsCache = allAuthors;
-              this.authorsCacheLoading = false;
-              console.log('⚠️ Authors cache loaded with errors:', this.authorsCache.length, 'authors');
-              observer.next();
-              observer.complete();
-            }
-          }
-        });
-      });
-    });
+        return this.http.get<ApiV2AuthorsResponse>(`${this.baseUrl}/domains/PRH.US/authors`, { params }).pipe(
+          delay(500), // Wait 500ms after each request
+          map(response => {
+            const authors = response.data.authors.map(a => this.mapApiAuthorToModel(a));
+            console.log(`📦 Loaded batch ${batchNumber}/${batches}: ${authors.length} authors`);
+            return authors;
+          }),
+          catchError((err) => {
+            console.error(`❌ Error loading batch ${batchNumber}:`, err.status, err.statusText);
+            return of([]);
+          })
+        );
+      }),
+      toArray(), // Collect all batches into an array
+      map(batchesArray => {
+        // Flatten array of arrays into single array
+        const allAuthors = batchesArray.flat();
+        this.authorsCache = allAuthors;
+        this.authorsCacheLoading = false;
+        console.log('✅ All authors loaded into cache:', this.authorsCache.length, 'authors');
+      }),
+      catchError((err) => {
+        console.error('❌ Fatal error loading authors cache:', err);
+        this.authorsCacheLoading = false;
+        this.authorsCache = [];
+        return of(void 0);
+      })
+    );
   }
 
   /**
    * Load all titles into cache (96,282 titles)
-   * Uses parallel batch loading for performance
+   * Uses SEQUENTIAL batch loading with proper waiting between batches
    */
   loadAllTitlesIntoCache(): Observable<void> {
     if (this.titlesCache) {
@@ -289,64 +290,57 @@ export class PrhApiService {
     }
 
     this.titlesCacheLoading = true;
-    console.log('🔄 Loading all titles into cache...');
+    console.log('🔄 Loading all titles into cache (sequential batches with delays)...');
 
     // Load in batches of 5000 (20 batches for 96,282 titles)
     const batchSize = 5000;
     const totalTitles = 96282;
     const batches = Math.ceil(totalTitles / batchSize);
 
-    const batchRequests: Observable<Title[]>[] = [];
+    // Create array of batch numbers [0, 1, 2, ..., 19]
+    const batchNumbers = Array.from({ length: batches }, (_, i) => i);
 
-    for (let i = 0; i < batches; i++) {
-      const start = i * batchSize;
-      const params = new HttpParams()
-        .set('start', start.toString())
-        .set('rows', batchSize.toString())
-        .set('api_key', this.apiKey);
+    // Use concatMap to ensure each batch waits for previous to complete
+    return from(batchNumbers).pipe(
+      concatMap(i => {
+        const start = i * batchSize;
+        const batchNumber = i + 1;
 
-      const request = this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/domains/PRH.US/titles`, { params }).pipe(
-        map(response => response.data.titles.map(t => this.mapApiTitleToModel(t))),
-        catchError(() => of([]))
-      );
+        const params = new HttpParams()
+          .set('start', start.toString())
+          .set('rows', batchSize.toString())
+          .set('api_key', this.apiKey);
 
-      batchRequests.push(request);
-    }
+        console.log(`🔄 Loading batch ${batchNumber}/${batches}...`);
 
-    // Execute all batches in parallel and combine results
-    return new Observable<void>(observer => {
-      let loadedBatches = 0;
-      const allTitles: Title[] = [];
-
-      batchRequests.forEach((request, index) => {
-        request.subscribe({
-          next: (titles) => {
-            allTitles.push(...titles);
-            loadedBatches++;
-            console.log(`📦 Loaded batch ${loadedBatches}/${batches}: ${titles.length} titles (Total: ${allTitles.length})`);
-
-            if (loadedBatches === batches) {
-              this.titlesCache = allTitles;
-              this.titlesCacheLoading = false;
-              console.log('✅ All titles loaded into cache:', this.titlesCache.length, 'titles');
-              observer.next();
-              observer.complete();
-            }
-          },
-          error: (err) => {
-            console.error(`❌ Error loading batch ${index + 1}:`, err);
-            loadedBatches++;
-            if (loadedBatches === batches) {
-              this.titlesCache = allTitles;
-              this.titlesCacheLoading = false;
-              console.log('⚠️ Titles cache loaded with errors:', this.titlesCache.length, 'titles');
-              observer.next();
-              observer.complete();
-            }
-          }
-        });
-      });
-    });
+        return this.http.get<ApiV2TitlesResponse>(`${this.baseUrl}/domains/PRH.US/titles`, { params }).pipe(
+          delay(500), // Wait 500ms after each request
+          map(response => {
+            const titles = response.data.titles.map(t => this.mapApiTitleToModel(t));
+            console.log(`📦 Loaded batch ${batchNumber}/${batches}: ${titles.length} titles`);
+            return titles;
+          }),
+          catchError((err) => {
+            console.error(`❌ Error loading batch ${batchNumber}:`, err.status, err.statusText);
+            return of([]);
+          })
+        );
+      }),
+      toArray(), // Collect all batches into an array
+      map(batchesArray => {
+        // Flatten array of arrays into single array
+        const allTitles = batchesArray.flat();
+        this.titlesCache = allTitles;
+        this.titlesCacheLoading = false;
+        console.log('✅ All titles loaded into cache:', this.titlesCache.length, 'titles');
+      }),
+      catchError((err) => {
+        console.error('❌ Fatal error loading titles cache:', err);
+        this.titlesCacheLoading = false;
+        this.titlesCache = [];
+        return of(void 0);
+      })
+    );
   }
 
   /**

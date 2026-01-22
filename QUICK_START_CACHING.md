@@ -24,22 +24,30 @@ npm start
 ```
 🚀 App initialized - preloading search caches...
 🚀 Preloading caches in background...
-🔄 Loading all authors into cache...
-🔄 Loading all titles into cache...
-📦 Loaded batch 1/21: 5000 authors (Total: 5000)
-📦 Loaded batch 1/20: 5000 titles (Total: 5000)
-📦 Loaded batch 2/21: 5000 authors (Total: 10000)
-📦 Loaded batch 2/20: 5000 titles (Total: 10000)
+📋 Step 1: Loading authors first...
+🔄 Loading all authors into cache (sequential batches with delays)...
+🔄 Loading batch 1/21...
+📦 Loaded batch 1/21: 5000 authors
+🔄 Loading batch 2/21...
+📦 Loaded batch 2/21: 5000 authors
 ...
-📦 Loaded batch 21/21: 3340 authors (Total: 103340)
+🔄 Loading batch 21/21...
+📦 Loaded batch 21/21: 3340 authors
 ✅ All authors loaded into cache: 103340 authors
 ✅ Authors cache preloaded
-📦 Loaded batch 20/20: 1282 titles (Total: 96282)
+
+📋 Step 2: Now loading titles...
+🔄 Loading all titles into cache (sequential batches with delays)...
+🔄 Loading batch 1/20...
+📦 Loaded batch 1/20: 5000 titles
+...
+🔄 Loading batch 20/20...
+📦 Loaded batch 20/20: 1282 titles
 ✅ All titles loaded into cache: 96282 titles
 ✅ Titles cache preloaded
 ```
 
-**This takes ~20-30 seconds** and happens automatically in the background!
+**This takes ~60-90 seconds** (authors load first, then titles - fully sequential with 500ms delays to avoid overwhelming the API)
 
 ### 3. Test Author Search (After Cache Loads)
 
@@ -117,18 +125,25 @@ npm start
 
 | Operation | With Preloading (NEW) | Without Preloading (OLD) |
 |-----------|----------------------|--------------------------|
-| App Startup | Cache loads automatically in background (~20-30 sec) | No loading |
-| First Search | **Instant** (if cache finished loading) | Wait for cache (~20-30 sec) |
+| App Startup | Cache loads automatically in background (~60-90 sec) | No loading |
+| First Search | **Instant** (if cache finished loading) | Wait for cache (~60-90 sec) |
 | All Searches After | **Instant** | **Instant** |
 
-**Key Improvement:** Search is now instant from the very first search (assuming user waits >30 seconds after app loads).
+**Key Improvement:** Search is now instant from the very first search (assuming user waits ~90 seconds after app loads).
+
+**Why so slow?** The API can't handle multiple simultaneous requests, so we load:
+1. All 21 author batches sequentially (one at a time, 500ms delays) - ~31 seconds
+2. **Then** all 20 title batches sequentially (one at a time, 500ms delays) - ~30 seconds
+3. **Total: Only ONE request in flight at any time** - prevents 504 Gateway Timeout errors
 
 ## Success Criteria ✅
 
 - [x] **Build succeeds** with no errors
 - [ ] Cache preloading starts automatically when app loads
 - [ ] Console shows "🚀 Preloading caches in background..." on app start
-- [ ] Cache loading completes in ~20-30 seconds
+- [ ] Console shows "🔄 Loading batch X/Y..." for each batch
+- [ ] **No 504 Gateway Timeout errors** (batches load sequentially with delays)
+- [ ] Cache loading completes in ~60-90 seconds
 - [ ] Console shows "✅ Authors cache preloaded" and "✅ Titles cache preloaded"
 - [ ] First author search is instant (if cache finished)
 - [ ] All subsequent searches are instant
