@@ -224,7 +224,7 @@ export class PrhApiService {
     console.log('🔄 Loading all authors into cache (sequential batches with delays)...');
 
     // Load in batches of 5000 (21 batches for 103,340 authors)
-    const batchSize = 5000;
+    const batchSize = 500; // Reduced batch size from 5000 to 500
     const totalAuthors = 103340;
     const batches = Math.ceil(totalAuthors / batchSize);
 
@@ -293,7 +293,7 @@ export class PrhApiService {
     console.log('🔄 Loading all titles into cache (sequential batches with delays)...');
 
     // Load in batches of 5000 (20 batches for 96,282 titles)
-    const batchSize = 5000;
+    const batchSize = 500; // Reduced batch size from 5000 to 500
     const totalTitles = 96282;
     const batches = Math.ceil(totalTitles / batchSize);
 
